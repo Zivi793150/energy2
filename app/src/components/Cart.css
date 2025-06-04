@@ -1,0 +1,599 @@
+.cart-container {
+  padding: 50px 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  font-family: 'WidockTrial', sans-serif;
+}
+
+.cart-title {
+  font-size: 2.5rem;
+  margin-bottom: 40px;
+  color: #1a1a1a;
+  text-align: center;
+}
+
+/* Стили для пустой корзины */
+.empty-cart {
+  text-align: center;
+  padding: 50px 0;
+  background-color: #fff;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.empty-cart p {
+  font-size: 1.2rem;
+  color: #666;
+  margin-bottom: 20px;
+}
+
+/* Стили для товаров в корзине */
+.cart-items {
+  margin-bottom: 30px;
+}
+
+.cart-item {
+  display: flex;
+  align-items: center;
+  padding: 20px;
+  margin-bottom: 15px;
+  background-color: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s;
+}
+
+.cart-item:hover {
+  box-shadow: 0 4px 16px rgba(47, 243, 250, 0.2);
+  transform: translateY(-3px);
+}
+
+.item-image {
+  width: 100px;
+  height: 100px;
+  overflow: hidden;
+  border-radius: 8px;
+  margin-right: 20px;
+}
+
+.item-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.item-details {
+  flex: 1;
+}
+
+.item-name {
+  font-size: 1.2rem;
+  margin: 0 0 10px 0;
+  color: #333;
+}
+
+.item-price {
+  font-size: 1rem;
+  color: #777;
+  margin: 0;
+}
+
+.item-quantity {
+  display: flex;
+  align-items: center;
+  margin: 0 20px;
+}
+
+.quantity-btn {
+  width: 30px;
+  height: 30px;
+  border: none;
+  background-color: rgba(47, 243, 250, 0.1);
+  color: #333;
+  font-size: 1.2rem;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.quantity-btn:hover:not(:disabled) {
+  background-color: rgba(47, 243, 250, 0.3);
+}
+
+.quantity-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.quantity-value {
+  width: 40px;
+  text-align: center;
+  font-size: 1rem;
+}
+
+.item-total {
+  font-weight: bold;
+  color: #2ff3fa;
+  width: 100px;
+  text-align: right;
+}
+
+.remove-item-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #999;
+  cursor: pointer;
+  margin-left: 15px;
+  transition: all 0.2s;
+}
+
+.remove-item-btn:hover {
+  color: #ff3333;
+  transform: scale(1.2);
+}
+
+/* Стили для итоговой информации */
+.cart-summary {
+  background-color: #fff;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 1.2rem;
+  margin-bottom: 25px;
+}
+
+.total-price {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #2ff3fa;
+}
+
+.cart-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.continue-shopping-btn, .checkout-btn {
+  padding: 12px 25px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-align: center;
+  flex: 1;
+}
+
+.continue-shopping-btn {
+  background-color: #f8fbff;
+  color: #333;
+  border: 1.5px solid #b6d0ee;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.continue-shopping-btn:hover {
+  background-color: #e9f3ff;
+  box-shadow: 0 0 15px rgba(47, 243, 250, 0.3);
+  transform: translateY(-3px);
+}
+
+.checkout-btn {
+  background-color: #2ff3fa;
+  color: #1a1a1a;
+  border: none;
+}
+
+.checkout-btn:hover {
+  background-color: #26d6e6;
+  box-shadow: 0 0 15px rgba(47, 243, 250, 0.5);
+  transform: translateY(-3px);
+}
+
+/* Спиннер загрузки */
+.loading-spinner {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 300px;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.spinner-animation {
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(47, 243, 250, 0.3);
+  border-radius: 50%;
+  border-top-color: #2ff3fa;
+  animation: spin 1s ease-in-out infinite;
+  margin-bottom: 15px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@media screen and (max-width: 768px) {
+  .cart-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .item-image {
+    margin-bottom: 15px;
+  }
+  
+  .item-quantity, .item-total {
+    margin: 15px 0;
+  }
+  
+  .cart-actions {
+    flex-direction: column;
+  }
+}
+
+/* Стили для баннеров авторизации и пользователя */
+.auth-banner, .user-banner {
+  background-color: #f8fbff;
+  border-radius: 12px;
+  border-left: 4px solid #2ff3fa;
+  padding: 15px 20px;
+  margin-bottom: 30px;
+}
+
+.auth-banner p, .user-banner p {
+  margin: 0 0 10px 0;
+  font-size: 1rem;
+  color: #555;
+}
+
+.auth-link {
+  color: #2ff3fa;
+  text-decoration: none;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.auth-link:hover {
+  text-decoration: underline;
+}
+
+/* Стили для раздела доставки */
+.delivery-section {
+  background-color: #fff;
+  border-radius: 12px;
+  padding: 25px;
+  margin-bottom: 30px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.section-title {
+  font-size: 1.5rem;
+  margin: 0 0 20px 0;
+  color: #333;
+  position: relative;
+  padding-left: 15px;
+}
+
+.section-title::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 20px;
+  background: linear-gradient(135deg, #4dc7d9 0%, #66a6ff 100%);
+  border-radius: 2px;
+}
+
+.subsection-title {
+  font-size: 1.2rem;
+  margin: 20px 0 15px 0;
+  color: #555;
+}
+
+.delivery-methods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.delivery-method-option {
+  flex: 1;
+  min-width: 250px;
+  position: relative;
+}
+
+.delivery-method-option input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.delivery-method-option label {
+  display: flex;
+  align-items: center;
+  padding: 15px;
+  border: 2px solid #e0e9ff;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 500;
+  color: #444;
+}
+
+.delivery-method-option input[type="radio"]:checked + label {
+  border-color: #4dc7d9;
+  background-color: #f0f8ff;
+}
+
+.delivery-method-option input[type="radio"]:focus + label {
+  box-shadow: 0 0 0 3px rgba(77, 199, 217, 0.25);
+}
+
+.radio-circle {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #c4d3e9;
+  border-radius: 50%;
+  margin-right: 10px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+input[type="radio"]:checked + label .radio-circle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 10px;
+  height: 10px;
+  background: linear-gradient(135deg, #4dc7d9 0%, #66a6ff 100%);
+  border-radius: 50%;
+}
+
+.price-badge {
+  margin-left: auto;
+  background-color: rgba(77, 199, 217, 0.1);
+  padding: 4px 10px;
+  border-radius: 15px;
+  font-size: 0.9rem;
+  color: #4dc7d9;
+  font-weight: 600;
+}
+
+.delivery-point-section {
+  padding: 10px 0;
+}
+
+/* Стили для формы адреса доставки */
+.courier-delivery-form {
+  padding: 10px 0;
+}
+
+.form-row {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 15px;
+}
+
+.form-group {
+  flex: 1;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px 15px;
+  border: 1px solid #e0e9ff;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: all 0.2s;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #4dc7d9;
+  box-shadow: 0 0 0 3px rgba(77, 199, 217, 0.1);
+}
+
+/* Обновленные стили для итоговой информации */
+.summary-details {
+  margin-bottom: 20px;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 1rem;
+  margin-bottom: 15px;
+  color: #555;
+}
+
+.total-row {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #333;
+  padding-top: 15px;
+  border-top: 1px solid #eee;
+}
+
+.total-price {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #4dc7d9;
+}
+
+/* Обновленная кнопка Checkout */
+.checkout-btn {
+  background: linear-gradient(135deg, #4dc7d9 0%, #66a6ff 100%);
+  color: white;
+  border: none;
+}
+
+.checkout-btn:hover {
+  background: linear-gradient(135deg, #5bdaec 0%, #78b1ff 100%);
+  box-shadow: 0 0 15px rgba(77, 199, 217, 0.5);
+  transform: translateY(-3px);
+}
+
+.checkout-btn:disabled {
+  background: #ccc;
+  color: #666;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+@media screen and (max-width: 768px) {
+  .form-row {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .delivery-methods {
+    flex-direction: column;
+  }
+  
+  .delivery-method-option {
+    width: 100%;
+  }
+}
+
+/* Стили для секции промокода */
+.promo-section {
+  background-color: #fff;
+  border-radius: 10px;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.promo-form {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.promo-input {
+  flex: 1;
+  padding: 12px 15px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 16px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  transition: all 0.3s ease;
+}
+
+.promo-input:focus {
+  outline: none;
+  border-color: #4285f4;
+  box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+}
+
+.promo-input.success {
+  border-color: #0cce6b;
+  background-color: rgba(12, 206, 107, 0.05);
+}
+
+.promo-input.error {
+  border-color: #ff4d4f;
+  background-color: rgba(255, 77, 79, 0.05);
+}
+
+.apply-promo-btn,
+.remove-promo-btn {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.apply-promo-btn {
+  background-color: #4285f4;
+  color: white;
+}
+
+.apply-promo-btn:hover:not(:disabled) {
+  background-color: #3367d6;
+}
+
+.apply-promo-btn:disabled {
+  background-color: #a0b8df;
+  cursor: not-allowed;
+}
+
+.remove-promo-btn {
+  background-color: #f0f0f0;
+  color: #666;
+}
+
+.remove-promo-btn:hover:not(:disabled) {
+  background-color: #e0e0e0;
+}
+
+.promo-message {
+  padding: 10px;
+  border-radius: 5px;
+  font-size: 14px;
+  margin-top: 10px;
+}
+
+.promo-message.success {
+  background-color: rgba(12, 206, 107, 0.1);
+  border: 1px solid rgba(12, 206, 107, 0.3);
+  color: #0cce6b;
+}
+
+.promo-message.error {
+  background-color: rgba(255, 77, 79, 0.1);
+  border: 1px solid rgba(255, 77, 79, 0.3);
+  color: #ff4d4f;
+}
+
+/* Стили для отображения скидки и кэшбэка в итогах */
+.discount-row {
+  color: #0cce6b;
+  font-weight: 500;
+}
+
+.discount-price {
+  color: #0cce6b;
+  font-weight: 600;
+}
+
+.cashback-row {
+  color: #ff9500;
+}
+
+.cashback-value {
+  color: #ff9500;
+  font-weight: 600;
+} 
