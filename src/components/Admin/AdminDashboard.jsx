@@ -39,8 +39,8 @@ const TopProductItem = ({ product, index }) => (
     </div>
     <div className="top-product-rating">
       <span>★</span>
-      <span>{product.ratingAvg.toFixed(1)}</span>
-      <small>({product.ratingCount})</small>
+      <span>{product.ratingAvg ? product.ratingAvg.toFixed(1) : '0.0'}</span>
+      <small>({product.ratingCount || 0})</small>
     </div>
   </motion.div>
 );
@@ -304,7 +304,7 @@ const AdminDashboard = () => {
           <StatCard 
             icon={ratingIcon}
             title="Средний рейтинг"
-            value={stats.productStats.averageRating.toFixed(1)}
+            value={stats.productStats.averageRating ? stats.productStats.averageRating.toFixed(1) : '0.0'}
             color="purple"
           />
           
@@ -322,9 +322,13 @@ const AdminDashboard = () => {
         <div className="dashboard-panel top-rated-panel">
           <h3>Лучшие продукты</h3>
           <div className="top-products-list">
-            {stats.productStats.topRated.map((product, index) => (
-              <TopProductItem key={product._id} product={product} index={index} />
-            ))}
+            {stats.productStats.topRated && stats.productStats.topRated.length > 0 ? (
+              stats.productStats.topRated.map((product, index) => (
+                <TopProductItem key={product._id} product={product} index={index} />
+              ))
+            ) : (
+              <div className="no-data">Нет данных о продуктах</div>
+            )}
           </div>
         </div>
         
@@ -332,9 +336,13 @@ const AdminDashboard = () => {
         <div className="dashboard-panel recent-products-panel">
           <h3>Недавно добавленные</h3>
           <div className="recent-products-list">
-            {stats.productStats.recentlyAdded.map((product, index) => (
-              <RecentProductItem key={product._id} product={product} index={index} />
-            ))}
+            {stats.productStats.recentlyAdded && stats.productStats.recentlyAdded.length > 0 ? (
+              stats.productStats.recentlyAdded.map((product, index) => (
+                <RecentProductItem key={product._id} product={product} index={index} />
+              ))
+            ) : (
+              <div className="no-data">Нет данных о продуктах</div>
+            )}
           </div>
         </div>
         
@@ -343,14 +351,18 @@ const AdminDashboard = () => {
           <h3>Активность пользователей</h3>
           <UserActivityPie 
             activityGroups={stats.userStats.activityGroups || {onlyRatings:0,onlyFavorites:0,both:0,neither:0}}
-            totalUsers={stats.usersCount}
+            totalUsers={stats.usersCount || 0}
           />
         </div>
         
         {/* Гистограмма по вкусам */}
         <div className="dashboard-panel flavor-panel">
           <h3>Распределение по вкусам</h3>
-          <FlavorChart data={stats.productStats.byFlavor} />
+          {stats.productStats.byFlavor && stats.productStats.byFlavor.length > 0 ? (
+            <FlavorChart data={stats.productStats.byFlavor} />
+          ) : (
+            <div className="no-data">Нет данных о вкусах</div>
+          )}
         </div>
       </div>
     </motion.div>

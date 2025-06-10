@@ -65,6 +65,7 @@ const ProductPage = () => {
         if (cachedProduct && cacheTimestamp && (now - parseInt(cacheTimestamp)) < 300000) {
           console.log('Используем кэшированные данные продукта');
           const productData = JSON.parse(cachedProduct);
+          console.log('Кэшированные данные продукта:', { id: productData._id, name: productData.name, flavor: productData.flavor });
           setProduct(productData);
           
           // Загружаем похожие продукты
@@ -102,6 +103,7 @@ const ProductPage = () => {
           
           if (foundProduct) {
             console.log('Продукт найден в общем списке:', foundProduct);
+            console.log('Данные продукта:', { id: foundProduct._id, name: foundProduct.name, flavor: foundProduct.flavor });
             currentProduct = foundProduct;
             setProduct(foundProduct);
           } else {
@@ -111,6 +113,7 @@ const ProductPage = () => {
         } else {
           const data = await response.json();
           console.log('Продукт получен напрямую из API:', data);
+          console.log('Данные продукта:', { id: data._id, name: data.name, flavor: data.flavor });
           currentProduct = data;
           setProduct(data);
         }

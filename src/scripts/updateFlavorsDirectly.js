@@ -5,10 +5,20 @@
  * Если URI не указан, будет использоваться mongodb://127.0.0.1:27017/energy-shop
  */
 
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import dotenv from 'dotenv';
+
+// Получаем путь к текущему файлу и директории
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Загружаем переменные окружения
+dotenv.config({ path: join(__dirname, '../../.env') });
 
 // Получаем MongoDB URI из аргументов командной строки или используем значение по умолчанию
-const uri = process.argv[2] || 'mongodb://127.0.0.1:27017/energy-shop';
+const uri = process.argv[2] || process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/energy-shop';
 console.log('Используем MongoDB URI:', uri);
 
 // Категории вкусов

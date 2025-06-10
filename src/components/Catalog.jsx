@@ -34,6 +34,7 @@ const Catalog = () => {
                 const data = await response.json();
                 // Извлекаем массив продуктов из ответа API
                 const productsList = data.products || [];
+                console.log('Загруженные продукты с вкусами:', productsList.map(p => ({ id: p._id, name: p.name, flavor: p.flavor })));
                 setProducts(productsList);
                 setFilteredProducts(productsList);
                 // Собираем уникальные бренды

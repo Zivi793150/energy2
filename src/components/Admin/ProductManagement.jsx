@@ -301,6 +301,7 @@ const ProductManagement = () => {
             ) : (
               <>
                 <div className="product-image">
+                  {console.log(`Изображение для продукта ${product.name}: ${product.image}`)}
                   <img src={product.image} alt={product.name} />
                 </div>
                 <div className="product-info">

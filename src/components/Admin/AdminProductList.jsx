@@ -106,7 +106,7 @@ const AdminProductList = () => {
                             transition={{ duration: 0.35, delay: idx * 0.06 }}
                         >
                             <div className="admin-product-image minimal">
-                                <img src={product.images} alt={product.name} />
+                                <img src={encodeURI(`/images/${product.image}`)} alt={product.name} />
                             </div>
                             <div className="admin-product-info minimal">
                                 <h3 className="admin-product-name minimal">{product.name}</h3>

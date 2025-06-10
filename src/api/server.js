@@ -15,13 +15,6 @@ const __dirname = dirname(__filename);
 // Загружаем переменные окружения из файла .env
 dotenv.config({ path: join(__dirname, '../../.env') });
 
-// Выводим информацию о переменных окружения
-console.log('Переменные окружения загружены');
-console.log('MONGODB_URI настроен:', !!process.env.MONGODB_URI);
-console.log('JWT_SECRET настроен:', !!process.env.JWT_SECRET);
-console.log('EMAIL_USER настроен:', !!process.env.EMAIL_USER);
-console.log('EMAIL_PASSWORD настроен:', !!process.env.EMAIL_PASSWORD);
-
 const app = express();
 const port = process.env.PORT || 5000;
 
@@ -52,22 +45,10 @@ app.use((req, res, next) => {
 
 // Добавляем middleware для логирования запросов
 app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
     next();
 });
 
 // Переопределяем методы res.json и res.send для лучшего логирования
-const originalJson = app.response.json;
-app.response.json = function(body) {
-  console.log(`Отправка JSON ответа:`, typeof body === 'object' ? JSON.stringify(body) : body);
-  return originalJson.call(this, body);
-};
-
-const originalSend = app.response.send;
-app.response.send = function(body) {
-  console.log(`Отправка ответа:`, typeof body === 'object' ? JSON.stringify(body) : body);
-  return originalSend.call(this, body);
-};
 
 // Добавляем middleware для раздачи статических файлов
 app.use('/uploads', express.static(join(__dirname, '../../uploads'), {
@@ -87,18 +68,11 @@ app.use('/uploads', express.static(join(__dirname, '../../uploads'), {
 // Если вы используете MongoDB Atlas, строка подключения будет выглядеть примерно так:
 // mongodb+srv://username:password@cluster0.xxxxx.mongodb.net/energy-lab?retryWrites=true&w=majority
 const uri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/energy_lab';
-console.log("URI подключения (без пароля):", uri.replace(/\/\/([^:]+):([^@]+)@/, '//***:***@'));
-
-// Переменная для отслеживания состояния подключения
-let isConnecting = false;
 
 // Экспортируем функцию для подключения, чтобы ее можно было использовать в других частях приложения
 async function connectToMongoDB() {
     try {
-        console.log('Подключение к MongoDB...');
         const connection = await mongoose.connect(process.env.MONGODB_URI, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
             serverSelectionTimeoutMS: 30000, // Увеличиваем таймаут до 30 секунд
             socketTimeoutMS: 45000, // Увеличиваем таймаут сокета
             connectTimeoutMS: 30000, // Увеличиваем таймаут подключения
@@ -108,7 +82,6 @@ async function connectToMongoDB() {
             retryReads: true, // Повторные попытки чтения
             heartbeatFrequencyMS: 10000 // Отправка heartbeat каждые 10 секунд
         });
-        console.log('Connected to MongoDB successfully');
         return connection;
     } catch (error) {
         console.error('MongoDB connection error:', error);
@@ -127,17 +100,13 @@ const connectWithRetry = async (retryCount = 5, delay = 3000) => {
         // Проверка наличия коллекций
         try {
             const collections = await mongoose.connection.db.listCollections().toArray();
-            console.log('Доступные коллекции:', collections.map(c => c.name));
             
             // Проверяем наличие коллекции products
             const productsCollection = collections.find(c => c.name === 'products');
             if (productsCollection) {
-                console.log('Коллекция products найдена');
                 // Получаем количество документов в коллекции
                 const count = await mongoose.connection.db.collection('products').countDocuments();
-                console.log(`Количество продуктов в базе: ${count}`);
             } else {
-                console.log('Коллекция products не найдена');
             }
             
             return true;
@@ -148,7 +117,6 @@ const connectWithRetry = async (retryCount = 5, delay = 3000) => {
     } catch (err) {
         console.error(`MongoDB connection error (attempt ${6 - retryCount}/5):`, err);
         if (retryCount > 0) {
-            console.log(`Повторная попытка подключения через ${delay/1000} секунды...`);
             return new Promise(resolve => {
                 setTimeout(() => {
                     resolve(connectWithRetry(retryCount - 1, delay));
@@ -166,20 +134,16 @@ mongoose.connection.on('error', err => {
     console.error('MongoDB connection error:', err);
     // Пытаемся переподключиться при ошибке соединения
     setTimeout(() => {
-        console.log('Автоматическая попытка переподключения после ошибки...');
         connectWithRetry(3);
     }, 3000);
 });
 
 mongoose.connection.on('disconnected', () => {
-    console.log('MongoDB disconnected');
     // Пытаемся переподключиться при разрыве соединения
-    console.log('Попытка восстановить соединение с MongoDB...');
     setTimeout(() => connectWithRetry(3), 1000);
 });
 
 mongoose.connection.on('connected', () => {
-    console.log('MongoDB connected');
 });
 
 // Добавляем обработчик ошибок для Express
@@ -197,19 +161,35 @@ app.use('/api/admin', adminRoutes);
 // Подключаем маршруты промокодов
 app.use('/api/promos', promoRoutes);
 
+// Функция для преобразования русского названия вкуса в английский ключ
+function convertFlavorToKey(flavor) {
+    const flavorMap = {
+        'Классический': 'classic',
+        'Тропический': 'tropic',
+        'Ягодный': 'berry',
+        'Цитрусовый': 'citrus',
+        'Кола': 'cola',
+        'Оригинальный': 'original',
+        'Микс': 'mixed',
+        'Экзотический': 'exotic',
+        'Мятный': 'mint',
+        'Вишневый': 'cherry',
+        'Шоколадный': 'chocolate',
+        'Другой': 'other'
+    };
+    
+    return flavorMap[flavor] || 'other';
+}
+
 // Маршрут для получения топовых продуктов
 app.get('/api/products/top-rated', async (req, res) => {
     try {
-        console.log('Запрос к /api/products/top-rated получен');
         const limit = parseInt(req.query.limit) || 10;
-        console.log(`Запрошен лимит: ${limit}`);
 
         // Создаем индекс для оптимизации запроса, если его еще нет
         try {
             await mongoose.connection.db.collection('products').createIndex({ popularity: -1 });
-            console.log('Индекс по полю popularity создан или уже существует');
         } catch (indexError) {
-            console.log('Ошибка при создании индекса:', indexError);
         }
 
         // Получаем топ продукты напрямую из коллекции
@@ -232,19 +212,15 @@ app.get('/api/products/top-rated', async (req, res) => {
             .limit(limit)
             .toArray();
 
-        // Преобразуем пути к изображениям в полные URL
+        // Преобразуем путь к изображению в полный URL
         const productsWithFullImageUrls = products.map(product => ({
             ...product,
-            image: (() => {
-                if (product.image && typeof product.image === 'string') {
-                    const fileName = product.image.split('\\').pop();
-                    return encodeURIComponent(fileName);
-                }
-                return null;
-            })()
+            image: product.image && typeof product.image === 'string' 
+                   ? encodeURIComponent(product.image.split('\\').pop()) 
+                   : null,
+            flavor: product.flavor
         }));
 
-        console.log(`Найдено ${products.length} топовых продуктов`);
         res.json({ products: productsWithFullImageUrls });
     } catch (error) {
         console.error('Ошибка при получении топовых продуктов:', error);
@@ -260,10 +236,7 @@ import Promo from './models/Promo.js';
 
 app.get('/api/products', async (req, res) => {
     try {
-        console.log("Запрос к /api/products получен");
-        
         const limit = parseInt(req.query.limit) || 0;
-        console.log(`Запрошен лимит: ${limit}`);
         
         let query = mongoose.connection.db.collection('products')
             .find({}, {
@@ -286,21 +259,15 @@ app.get('/api/products', async (req, res) => {
         
         const products = await query.toArray();
         
-        console.log('Original product.image from DB (all products):', products.map(p => p.image));
-
         // Преобразуем пути к изображениям в полные URL
         const productsWithFullImageUrls = products.map(product => ({
             ...product,
-            image: (() => {
-                if (product.image && typeof product.image === 'string') {
-                    const fileName = product.image.split('\\').pop();
-                    return encodeURIComponent(fileName);
-                }
-                return null;
-            })()
+            image: product.image && typeof product.image === 'string' 
+                   ? encodeURIComponent(product.image.split('\\').pop()) 
+                   : null,
+            flavor: product.flavor
         }));
         
-        console.log(`Товары получены из базы данных: ${products.length}`);
         res.json({ products: productsWithFullImageUrls });
     } catch (err) {
         console.error("Ошибка в /api/products:", err);
@@ -312,38 +279,40 @@ app.get('/api/products', async (req, res) => {
 app.get('/api/products/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        console.log(`Запрос к /api/products/${id} получен`);
-        
-        const product = await mongoose.connection.db.collection('products')
-            .findOne(
-                { _id: new mongoose.Types.ObjectId(id) },
-                { projection: { _id: 1, name: 1, price: 1, image: 1, ratingAvg: 1, ratingCount: 1, flavor: 1, firm: 1, description: 1 } }
-            );
-        
+        const product = await mongoose.connection.db.collection('products').findOne(
+            { _id: new mongoose.Types.ObjectId(id) },
+            {
+                projection: {
+                    _id: 1,
+                    name: 1,
+                    price: 1,
+                    image: 1,
+                    ratingAvg: 1,
+                    ratingCount: 1,
+                    flavor: 1,
+                    firm: 1,
+                    description: 1
+                }
+            }
+        );
+
         if (!product) {
-            console.log(`Продукт с ID ${id} не найден`);
             return res.status(404).json({ message: 'Продукт не найден' });
         }
-        
-        console.log('Original product.image from DB:', product.image);
 
-        // Преобразуем пути к изображениям в полные URL
-        const productWithFullImageUrls = {
+        // Преобразуем путь к изображению в полный URL
+        const productWithFullImageUrl = {
             ...product,
-            image: (() => {
-                if (product.image && typeof product.image === 'string') {
-                    const fileName = product.image.split('\\').pop();
-                    return encodeURIComponent(fileName);
-                }
-                return null;
-            })()
+            image: product.image && typeof product.image === 'string' 
+                   ? encodeURIComponent(product.image.split('\\').pop()) 
+                   : null,
+            flavor: product.flavor
         };
-        
-        console.log("Продукт найден:", JSON.stringify(productWithFullImageUrls, null, 2));
-        res.json(productWithFullImageUrls);
+
+        res.json(productWithFullImageUrl);
     } catch (err) {
-        console.error(`Ошибка при получении продукта ${req.params.id}:`, err);
-        res.status(500).json({ message: 'Server Error', error: err.message });
+        console.error('Ошибка при получении продукта:', err);
+        res.status(500).json({ message: 'Ошибка сервера', error: err.message });
     }
 });
 
@@ -453,9 +422,6 @@ import { protect } from '../middleware/auth.js';
 // Эндпоинт для получения категорий
 app.get('/api/categories', async (req, res) => {
   try {
-    console.log("Запрос к /api/categories получен");
-    
-    // Список категорий - можно заменить на загрузку из базы данных, если нужно
     const categories = [
       { value: 'energy', label: 'Энергетики' },
       { value: 'protein', label: 'Протеиновые напитки' },
@@ -466,7 +432,6 @@ app.get('/api/categories', async (req, res) => {
     ];
     
     res.json({ categories });
-    console.log("Категории отправлены в ответе");
   } catch (err) {
     console.error("Ошибка в /api/categories:", err);
     res.status(500).json({ message: 'Server Error' });
@@ -503,8 +468,6 @@ app.post('/api/products/:id/rate', protect, async (req, res) => {
         const { rating } = req.body;
         const userId = req.user._id;
         
-        console.log(`Запрос на оценку продукта ${id} с рейтингом ${rating} от пользователя ${userId}`);
-        
         if (!rating || rating < 1 || rating > 5) {
             return res.status(400).json({ message: 'Рейтинг должен быть от 1 до 5' });
         }
@@ -521,13 +484,11 @@ app.post('/api/products/:id/rate', protect, async (req, res) => {
             
             if (ratingRecord) {
                 // Обновляем существующую оценку
-                console.log(`Обновление существующего рейтинга для продукта ${id}`);
                 ratingRecord.rating = rating;
                 ratingRecord.updatedAt = new Date();
                 await ratingRecord.save();
             } else {
                 // Создаем новую оценку
-                console.log(`Создание нового рейтинга для продукта ${id}`);
                 ratingRecord = new Rating({
                     product: id,
                     user: userId,
@@ -547,7 +508,6 @@ app.post('/api/products/:id/rate', protect, async (req, res) => {
             // Обновляем статистику рейтинга продукта в отдельном try-catch блоке
             try {
                 await product.updateRatingStats();
-                console.log(`Статистика рейтинга продукта ${id} успешно обновлена`);
             } catch (statsError) {
                 console.error('Ошибка при обновлении статистики рейтинга продукта:', statsError);
                 // Не прерываем выполнение, возвращаем успех с предупреждением
@@ -564,16 +524,13 @@ app.post('/api/products/:id/rate', protect, async (req, res) => {
                 productId: id,
                 rating
             });
-        } catch (ratingError) {
-            console.error('Ошибка при сохранении рейтинга:', ratingError);
-            res.status(500).json({ 
-                message: 'Ошибка сервера при сохранении рейтинга', 
-                error: ratingError.message 
-            });
+        } catch (saveError) {
+            console.error('Ошибка при сохранении рейтинга:', saveError);
+            res.status(500).json({ message: 'Ошибка при сохранении рейтинга', error: saveError.message });
         }
     } catch (err) {
-        console.error('Ошибка при добавлении рейтинга:', err);
-        res.status(500).json({ message: 'Ошибка сервера', error: err.message });
+        console.error('Ошибка при добавлении/обновлении рейтинга:', err);
+        res.status(500).json({ message: 'Ошибка при добавлении/обновлении рейтинга', error: err.message });
     }
 });
 
@@ -599,7 +556,6 @@ app.get('/api/products/:id/my-rating', protect, async (req, res) => {
 app.get('/api/products/count', async (req, res) => {
     try {
         const count = await mongoose.connection.db.collection('products').countDocuments();
-        console.log(`Всего продуктов в базе: ${count}`);
         res.json({ count });
     } catch (error) {
         console.error('Ошибка при подсчете продуктов:', error);
@@ -607,27 +563,17 @@ app.get('/api/products/count', async (req, res) => {
     }
 });
 
-// Функция для запуска сервера
+// Запуск сервера
 const startServer = async () => {
-    try {
-        // Подключаемся к MongoDB
-        const connected = await connectWithRetry();
-        if (!connected) {
-            console.error('Не удалось подключиться к MongoDB. Сервер не запущен.');
-            process.exit(1);
-        }
-
-        // Запускаем сервер
+    const connected = await connectWithRetry();
+    if (connected) {
         app.listen(port, () => {
-            console.log(`Сервер запущен на порту ${port}`);
         });
-    } catch (err) {
-        console.error('Ошибка при запуске сервера:', err);
-        process.exit(1);
+    } else {
+        console.error('Не удалось подключиться к MongoDB, сервер не запущен.');
     }
 };
 
-// Запускаем сервер
 startServer().catch(err => {
     console.error('Ошибка при запуске сервера:', err);
     process.exit(1);

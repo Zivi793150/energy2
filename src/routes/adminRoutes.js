@@ -71,20 +71,28 @@ router.get('/dashboard', protect, isAdmin, asyncHandler(async (req, res) => {
       .limit(5)
       .select('name firm ratingAvg ratingCount');
     
+    console.log('Топовые продукты:', JSON.stringify(topRatedProducts, null, 2));
+    
     const recentProducts = await Product.find()
       .sort({ createdAt: -1 })
       .limit(5)
       .select('name firm createdAt');
+    
+    console.log('Недавние продукты:', JSON.stringify(recentProducts, null, 2));
     
     const productsByFlavor = await Product.aggregate([
       { $group: { _id: '$flavor', count: { $sum: 1 } } },
       { $sort: { count: -1 } }
     ]);
     
+    console.log('Продукты по вкусам:', JSON.stringify(productsByFlavor, null, 2));
+    
     // Средний рейтинг по всем продуктам
     const avgRating = await Product.aggregate([
       { $group: { _id: null, avgRating: { $avg: '$ratingAvg' } } }
     ]);
+    
+    console.log('Средний рейтинг:', JSON.stringify(avgRating, null, 2));
     
     res.json({
       usersCount,
@@ -128,7 +136,11 @@ router.get('/products', protect, isAdmin, asyncHandler(async (req, res) => {
 // Добавление нового продукта
 router.post('/products', protect, isAdmin, asyncHandler(async (req, res) => {
   try {
-    const product = new Product(req.body);
+    const productData = { ...req.body };
+    if (productData.image) {
+      productData.image = encodeURI(productData.image);
+    }
+    const product = new Product(productData);
     await product.save();
     
     res.status(201).json(product);
@@ -141,9 +153,13 @@ router.post('/products', protect, isAdmin, asyncHandler(async (req, res) => {
 // Обновление продукта
 router.put('/products/:id', protect, isAdmin, asyncHandler(async (req, res) => {
   try {
+    const productData = { ...req.body };
+    if (productData.image) {
+      productData.image = encodeURI(productData.image);
+    }
     const product = await Product.findByIdAndUpdate(
       req.params.id,
-      { $set: req.body },
+      { $set: productData },
       { new: true, runValidators: true }
     );
     
