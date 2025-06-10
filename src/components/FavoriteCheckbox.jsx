@@ -2,9 +2,19 @@ import React from 'react';
 import styled from 'styled-components';
 
 const FavoriteCheckbox = ({ productId, initialChecked = false, onChange }) => {
+  const [isChecked, setIsChecked] = React.useState(initialChecked);
+
+  // Обновляем состояние при изменении initialChecked
+  React.useEffect(() => {
+    console.log(`FavoriteCheckbox: обновление состояния для ${productId}, initialChecked:`, initialChecked);
+    setIsChecked(initialChecked);
+  }, [initialChecked, productId]);
+
   const handleChange = (e) => {
+    const newChecked = e.target.checked;
+    console.log(`FavoriteCheckbox: изменение состояния для ${productId}, новое значение:`, newChecked);
+    setIsChecked(newChecked);
     if (onChange) {
-      // Вызываем функцию обратного вызова только с ID продукта
       onChange(productId);
     }
   };
@@ -16,7 +26,7 @@ const FavoriteCheckbox = ({ productId, initialChecked = false, onChange }) => {
           className="like" 
           type="checkbox" 
           title="Добавить в избранное" 
-          defaultChecked={initialChecked}
+          checked={isChecked}
           onChange={handleChange}
         />
         <div className="checkmark">

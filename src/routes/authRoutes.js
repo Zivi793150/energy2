@@ -2,6 +2,7 @@ import express from 'express';
 import authController from '../controllers/authController.js';
 import { protect } from '../middleware/auth.js';
 import User from '../models/User.js';
+import Product from '../models/Product.js';
 
 const router = express.Router();
 
@@ -83,28 +84,101 @@ router.post('/login', asyncHandler(authController.login));
 
 // Получить избранное пользователя
 router.get('/favorites', protect, async (req, res) => {
-  const user = await User.findById(req.user._id).populate('favorites');
-  res.json(user.favorites);
+  try {
+    const user = await User.findById(req.user._id).populate('favorites');
+    if (!user) {
+      console.error('Пользователь не найден при получении избранного:', req.user._id);
+      return res.status(404).json({ message: 'Пользователь не найден' });
+    }
+    console.log('Избранные товары, отправляемые с сервера:', JSON.stringify(user.favorites, null, 2));
+    res.json(user.favorites);
+  } catch (error) {
+    console.error('Ошибка при получении избранного:', error);
+    res.status(500).json({ message: 'Ошибка сервера при получении избранного', error: error.message });
+  }
 });
 
 // Добавить товар в избранное
 router.post('/favorites/:productId', protect, async (req, res) => {
-  const user = await User.findById(req.user._id);
-  if (!user.favorites.includes(req.params.productId)) {
-    user.favorites.push(req.params.productId);
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      console.error('Пользователь не найден при добавлении в избранное:', req.user._id);
+      return res.status(404).json({ message: 'Пользователь не найден' });
+    }
+
+    const productId = req.params.productId;
+    if (!productId) {
+      console.error('ID продукта не указан при добавлении в избранное');
+      return res.status(400).json({ message: 'ID продукта обязателен' });
+    }
+
+    // Проверяем существование продукта
+    const product = await Product.findById(productId);
+    if (!product) {
+      console.error('Продукт не найден при добавлении в избранное:', productId);
+      return res.status(404).json({ message: 'Продукт не найден' });
+    }
+
+    // Проверяем, нет ли уже этого товара в избранном
+    if (user.favorites.includes(productId)) {
+      console.log('Товар уже в избранном:', productId);
+      return res.json(user.favorites);
+    }
+
+    user.favorites.push(productId);
+    console.log('Пользователь перед сохранением:', { 
+      id: user._id, 
+      email: user.email, 
+      name: user.name, 
+      favoritesCount: user.favorites.length 
+    });
+    
     await user.save();
+    console.log('Товар успешно добавлен в избранное:', productId);
+    res.json(user.favorites);
+  } catch (error) {
+    console.error(`Ошибка при добавлении товара ${req.params.productId} в избранное:`, error);
+    res.status(500).json({ message: 'Ошибка сервера при добавлении в избранное', error: error.message });
   }
-  res.json(user.favorites);
 });
 
 // Удалить товар из избранного
 router.delete('/favorites/:productId', protect, async (req, res) => {
-  const user = await User.findById(req.user._id);
-  user.favorites = user.favorites.filter(
-    id => id.toString() !== req.params.productId
-  );
-  await user.save();
-  res.json(user.favorites);
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      console.error('Пользователь не найден при удалении из избранного:', req.user._id);
+      return res.status(404).json({ message: 'Пользователь не найден' });
+    }
+
+    const productId = req.params.productId;
+    if (!productId) {
+      console.error('ID продукта не указан при удалении из избранного');
+      return res.status(400).json({ message: 'ID продукта обязателен' });
+    }
+
+    // Проверяем, есть ли товар в избранном
+    if (!user.favorites.includes(productId)) {
+      console.log('Товар не найден в избранном:', productId);
+      return res.json(user.favorites);
+    }
+
+    user.favorites = user.favorites.filter(id => id.toString() !== productId);
+    console.log('Пользователь перед сохранением:', { 
+      id: user._id, 
+      email: user.email, 
+      name: user.name, 
+      favoritesCount: user.favorites.length 
+    });
+    
+    await user.save();
+    console.log('Товар успешно удален из избранного:', productId);
+    res.json(user.favorites);
+  } catch (error) {
+    console.error(`Ошибка при удалении товара ${req.params.productId} из избранного:`, error);
+    res.status(500).json({ message: 'Ошибка сервера при удалении из избранного', error: error.message });
+  }
 });
 
 // Обработчик ошибок

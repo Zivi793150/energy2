@@ -73,7 +73,7 @@ const SimilarProducts = ({ products, title = 'Похожие по вкусу' })
               </div>
               <Link to={`/product/${product._id || product.id}`} className="similar-product-link">
                 <div className="similar-product-image">
-                  <img src={product.images} alt={product.name} loading="lazy" />
+                  <img src={encodeURI(`/images/${product.image}`)} alt={product.name} loading="lazy" />
                 </div>
                 <div className="similar-product-info">
                   <h3 className="similar-product-name">{product.name}</h3>

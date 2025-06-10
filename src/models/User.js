@@ -16,7 +16,7 @@ const userSchema = new mongoose.Schema({
   },
   name: {
     type: String,
-    required: [true, 'Имя обязательно'],
+    required: false,
     trim: true
   },
   role: {

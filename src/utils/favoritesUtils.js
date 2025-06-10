@@ -18,28 +18,42 @@ function isLocalStorageAvailable() {
 function getCurrentUserId() {
   try {
     const token = localStorage.getItem('token');
-    if (!token) return null;
-    
-    // Получаем ID пользователя из localStorage, если он там сохранен
-    const userData = localStorage.getItem('userData');
-    if (userData) {
-      const parsedUserData = JSON.parse(userData);
-      return parsedUserData._id || parsedUserData.id;
+    if (!token) {
+      console.log('Токен не найден в localStorage');
+      return null;
     }
     
-    // Если информации о пользователе нет, получаем ID из токена
-    // Токены JWT имеют формат header.payload.signature
-    // Из payload можно получить userId
+    // Сначала пробуем получить из userData
+    const userData = localStorage.getItem('userData');
+    if (userData) {
+      try {
+        const parsedUserData = JSON.parse(userData);
+        if (parsedUserData && (parsedUserData._id || parsedUserData.id)) {
+          console.log('ID пользователя получен из userData:', parsedUserData._id || parsedUserData.id);
+          return parsedUserData._id || parsedUserData.id;
+        }
+      } catch (e) {
+        console.error('Ошибка при парсинге userData:', e);
+      }
+    }
+    
+    // Если не получилось из userData, пробуем из токена
     try {
       const payload = token.split('.')[1];
       const decodedPayload = JSON.parse(atob(payload));
-      return decodedPayload.id || decodedPayload.userId || decodedPayload.sub;
+      const userId = decodedPayload.id || decodedPayload.userId || decodedPayload.sub;
+      if (userId) {
+        console.log('ID пользователя получен из токена:', userId);
+        return userId;
+      }
     } catch (e) {
-      console.error('Не удалось получить ID пользователя из токена:', e);
-      return null;
+      console.error('Ошибка при получении ID пользователя из токена:', e);
     }
+    
+    console.log('Не удалось получить ID пользователя ни из userData, ни из токена');
+    return null;
   } catch (e) {
-    console.error('Ошибка при получении ID пользователя:', e);
+    console.error('Общая ошибка при получении ID пользователя:', e);
     return null;
   }
 }
@@ -47,36 +61,40 @@ function getCurrentUserId() {
 // Получить ключ для хранения избранных товаров, уникальный для каждого пользователя
 function getFavoritesKey() {
   const userId = getCurrentUserId();
-  return userId ? `favorites_${userId}` : 'favorites_guest';
+  const key = userId ? `favorites_${userId}` : 'favorites_guest';
+  console.log('Используется ключ для избранного:', key);
+  return key;
 }
 
-// Получить избранное из localStorage
+// Получить избранные товары
 export function getFavorites() {
-  if (!isLocalStorageAvailable()) return [];
-  
   try {
-    const favoritesKey = getFavoritesKey();
-    console.log(`Получаем избранные товары с ключом: ${favoritesKey}`);
-    
-    const favorites = localStorage.getItem(favoritesKey);
-    const result = favorites ? JSON.parse(favorites) : [];
-    console.log('Получены избранные товары:', result);
-    return result;
+    const key = getFavoritesKey();
+    const favorites = localStorage.getItem(key);
+    if (!favorites) {
+      console.log('Избранные товары не найдены в localStorage');
+      return [];
+    }
+    const parsedFavorites = JSON.parse(favorites);
+    console.log('Получены избранные товары:', parsedFavorites);
+    return Array.isArray(parsedFavorites) ? parsedFavorites : [];
   } catch (e) {
     console.error('Ошибка при получении избранных товаров:', e);
     return [];
   }
 }
 
-// Сохранить избранное в localStorage
+// Сохранить избранные товары
 export function setFavorites(favorites) {
-  if (!isLocalStorageAvailable()) return;
-  
   try {
-    const favoritesKey = getFavoritesKey();
-    console.log(`Сохраняем избранные товары с ключом: ${favoritesKey}`, favorites);
-    
-    localStorage.setItem(favoritesKey, JSON.stringify(favorites));
+    const key = getFavoritesKey();
+    if (!Array.isArray(favorites)) {
+      console.error('Попытка сохранить невалидные данные избранного:', favorites);
+      return;
+    }
+    localStorage.setItem(key, JSON.stringify(favorites));
+    console.log('Избранные товары сохранены:', favorites);
+    window.dispatchEvent(new Event('favoritesUpdated'));
   } catch (e) {
     console.error('Ошибка при сохранении избранных товаров:', e);
   }
@@ -96,13 +114,34 @@ function isSameProduct(item1, item2) {
   return id1 === id2;
 }
 
-// Функция получения ID продукта (для унификации)
-function getProductId(product) {
-  const id = product._id || product.id;
-  if (!id) {
-    console.error('ID продукта не найден', product);
+// Получить ID продукта
+export function getProductId(product) {
+  if (!product) {
+    console.error('getProductId: продукт не определен');
+    return null;
   }
-  return id;
+  return product._id || product.id;
+}
+
+// Проверить, есть ли товар в избранном
+export function isInFavorites(productId, favoritesArray) {
+  if (!productId) {
+    console.error('isInFavorites: ID не определен');
+    return false;
+  }
+
+  // Если favoritesArray передан, используем его, иначе получаем из localStorage
+  const currentFavorites = favoritesArray || getFavorites();
+  console.log(`isInFavorites: проверка ID продукта: ${productId} с использованием массива избранного из контекста (или localStorage)`);
+
+  const result = currentFavorites.some(item => {
+    const itemId = getProductId(item);
+    // console.log(`isInFavorites: сравниваем ID избранного товара (${itemId}) с productId (${productId})`);
+    return itemId === productId;
+  });
+
+  console.log(`Проверка наличия товара ${productId} в избранном:`, result);
+  return result;
 }
 
 // Добавить товар в избранное
@@ -138,23 +177,6 @@ export function removeFromFavorites(productId) {
   const wasRemoved = favorites.length !== newFavorites.length;
   console.log('Товар был удален?', wasRemoved);
   return wasRemoved; // Возвращаем true, если товар был удален
-}
-
-// Проверить, есть ли товар в избранном
-export function isInFavorites(productId) {
-  if (!productId) {
-    console.error('isInFavorites: ID не определен');
-    return false;
-  }
-  
-  const favorites = getFavorites();
-  const result = favorites.some(item => {
-    const itemId = getProductId(item);
-    return itemId === productId;
-  });
-  
-  console.log(`Проверка наличия товара ${productId} в избранном:`, result);
-  return result;
 }
 
 // Переключить статус товара в избранном

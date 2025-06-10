@@ -14,7 +14,7 @@ const Catalog = () => {
     const [products, setProducts] = useState([]);
     const [filteredProducts, setFilteredProducts] = useState([]);
     const [loading, setLoading] = useState(true);
-    const { toggleFavoriteItem } = useFavorites();
+    const { toggleFavoriteItem, favorites, refreshFavorites } = useFavorites();
     const [showFilters, setShowFilters] = useState(false);
     const [brands, setBrands] = useState([]);
     const [selectedBrands, setSelectedBrands] = useState([]);
@@ -22,6 +22,8 @@ const Catalog = () => {
     const [priceFrom, setPriceFrom] = useState('');
     const [priceTo, setPriceTo] = useState('');
     const [sort, setSort] = useState('');
+
+    console.log('Catalog: Текущий список избранных товаров:', favorites);
 
     useEffect(() => {
         const fetchProducts = async () => {
@@ -49,8 +51,9 @@ const Catalog = () => {
         fetchProducts();
     }, []);
 
-    // Фильтрация товаров
+    // Добавляем useEffect для обновления состояния при изменении favorites
     useEffect(() => {
+        console.log('Catalog useEffect: favorites обновлены, запускаем перефильтрацию/сортировку:', favorites);
         let filtered = [...products];
         if (selectedBrands.length > 0) {
             filtered = filtered.filter(p => selectedBrands.includes(p.firm));
@@ -74,7 +77,13 @@ const Catalog = () => {
             filtered = filtered.slice().sort((a, b) => (b.price || 0) - (a.price || 0));
         }
         setFilteredProducts(filtered);
-    }, [products, selectedBrands, selectedFlavors, priceFrom, priceTo, sort]);
+    }, [products, selectedBrands, selectedFlavors, priceFrom, priceTo, sort, favorites]);
+
+    // Добавляем этот useEffect для обновления избранного при монтировании компонента
+    useEffect(() => {
+        console.log('Catalog: Компонент смонтирован, обновляем избранное');
+        refreshFavorites();
+    }, []);
 
     const handleToggleFavorite = (productId) => {
         const product = products.find(p => (p._id === productId || p.id === productId));
@@ -146,9 +155,10 @@ const Catalog = () => {
                     filteredProducts.map(product => (
                         <div key={product._id || product.id} className="card">
                             <div className="favorite-checkbox">
+                                {console.log(`Catalog: Рендеринг FavoriteCheckbox для ${product.name} (ID: ${product._id || product.id}), initialChecked: ${isInFavorites(product._id || product.id, favorites)}`)}
                                 <FavoriteCheckbox 
                                     productId={product._id || product.id} 
-                                    initialChecked={isInFavorites(product._id || product.id)}
+                                    initialChecked={isInFavorites(product._id || product.id, favorites)}
                                     onChange={handleToggleFavorite}
                                 />
                             </div>

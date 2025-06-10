@@ -9,6 +9,8 @@ const Favorites = () => {
   const { favorites, toggleFavoriteItem } = useFavorites();
   const { isAuthenticated, user } = useAuth();
 
+  console.log('Favorites.jsx: список избранных товаров:', favorites);
+
   const handleToggleFavorite = (productId) => {
     const product = favorites.find(p => (p._id === productId || p.id === productId));
     if (product) {

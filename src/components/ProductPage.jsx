@@ -45,7 +45,7 @@ const ProductPage = () => {
   const [quantity, setQuantity] = useState(1);
   const [showAdded, setShowAdded] = useState(false);
   const { refreshCart } = useCart();
-  const { toggleFavoriteItem } = useFavorites();
+  const { toggleFavoriteItem, favorites, refreshFavorites } = useFavorites();
   const { isAuthenticated } = useAuth();
 
   useEffect(() => {
@@ -143,6 +143,12 @@ const ProductPage = () => {
     }
   }, [id]);
 
+  // Добавляем этот useEffect для обновления избранного при монтировании компонента
+  useEffect(() => {
+    console.log('ProductPage: Компонент смонтирован, обновляем избранное');
+    refreshFavorites();
+  }, []);
+
   const handleBackClick = () => {
     navigate(-1); // Вернуться на предыдущую страницу
   };
@@ -238,9 +244,10 @@ const ProductPage = () => {
             )}
           </div>
           <div className="product-favorite">
+            {console.log(`ProductPage: Рендеринг FavoriteCheckbox для ${product.name} (ID: ${product._id || product.id}), initialChecked: ${isInFavorites(product._id || product.id, favorites)}`)}
             <FavoriteCheckbox 
               productId={product._id || product.id} 
-              initialChecked={isInFavorites(product._id || product.id)}
+              initialChecked={isInFavorites(product._id || product.id, favorites)}
               onChange={handleToggleFavorite}
             />
           </div>
