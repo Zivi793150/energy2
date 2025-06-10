@@ -1,0 +1,152 @@
+.reviews-section {
+  width: 100%;
+  margin: 4rem 0 2rem;
+  padding: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.reviews-title {
+  font-family: 'WidockTrial', sans-serif;
+  font-size: 2.5rem;
+  color: #1e88e5;
+  text-align: center;
+  margin-bottom: 2rem;
+  position: relative;
+}
+
+.reviews-title::after {
+  content: '';
+  display: block;
+  width: 60px;
+  height: 3px;
+  background: linear-gradient(135deg, #1e88e5 0%, #37ffff 100%);
+  margin: 0.5rem auto 0;
+  border-radius: 2px;
+}
+
+.reviews-container {
+  width: 100%;
+  overflow: hidden;
+  padding: 1rem 0;
+  cursor: pointer;
+}
+
+.reviews-slider {
+  display: flex;
+  width: auto;
+  min-width: 100%;
+  gap: 20px;
+  will-change: transform;
+}
+
+.review-card {
+  flex: 0 0 auto;
+  width: 340px;
+  padding: 1.5rem;
+  background: rgba(248, 251, 255, 0.4);
+  border: 1px solid rgba(182, 208, 238, 0.4);
+  border-radius: 16px;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  box-shadow: 0 8px 20px rgba(30, 136, 229, 0.05);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.review-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 25px rgba(30, 136, 229, 0.15);
+}
+
+.review-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.review-avatar-initial {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 1rem;
+  font-family: 'WidockTrial', sans-serif;
+  font-size: 1.5rem;
+  color: white;
+  font-weight: bold;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.review-info {
+  flex: 1;
+}
+
+.review-name {
+  font-family: 'WidockTrial', sans-serif;
+  font-size: 1.1rem;
+  color: #333;
+  margin: 0 0 0.25rem;
+}
+
+.review-rating {
+  display: flex;
+  align-items: center;
+}
+
+.star {
+  color: #c4c4c4;
+  font-size: 1rem;
+  margin-right: 2px;
+}
+
+.star.filled {
+  color: #1e88e5;
+  text-shadow: 0 0 2px rgba(30, 136, 229, 0.5);
+}
+
+.review-content {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #555;
+  margin: 0;
+}
+
+/* Адаптивность для планшетов и мобильных */
+@media (max-width: 768px) {
+  .reviews-title {
+    font-size: 2rem;
+  }
+  
+  .review-card {
+    width: 280px;
+    padding: 1.2rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .reviews-title {
+    font-size: 1.8rem;
+  }
+  
+  .review-card {
+    width: 240px;
+    padding: 1rem;
+  }
+  
+  .review-avatar-initial {
+    width: 40px;
+    height: 40px;
+    font-size: 1.2rem;
+  }
+  
+  .review-name {
+    font-size: 1rem;
+  }
+  
+  .review-content {
+    font-size: 0.85rem;
+  }
+} 

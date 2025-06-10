@@ -1,0 +1,117 @@
+.star-rating {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  margin: 10px 0;
+}
+
+.star-rating-small .star {
+  font-size: 18px;
+  margin: 0 2px;
+}
+
+.star-rating-medium .star {
+  font-size: 24px;
+  margin: 0 3px;
+}
+
+.star-rating-large .star {
+  font-size: 36px;
+  margin: 0 5px;
+}
+
+.star {
+  cursor: pointer;
+  transition: transform 0.2s, color 0.2s;
+}
+
+.star:hover {
+  transform: scale(1.2);
+}
+
+.star.filled {
+  color: #ffd700; /* Золотой цвет для заполненных звезд */
+  text-shadow: 0 0 5px rgba(255, 215, 0, 0.7); /* Свечение для заполненных звезд */
+}
+
+.star.empty {
+  color: #ccc; /* Серый цвет для пустых звезд */
+}
+
+.read-only .star {
+  cursor: default;
+}
+
+.read-only .star:hover {
+  transform: none;
+}
+
+.star.disabled {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.rating-text {
+  margin-left: 10px;
+  font-size: 14px;
+  color: #666;
+}
+
+/* Анимация при изменении рейтинга */
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+.star-rating:has(.star:active) {
+  animation: pulse 0.5s ease-in-out;
+}
+
+/* Отображение рейтинга в виде диаграммы */
+.rating-distribution {
+  width: 100%;
+  max-width: 300px;
+  margin-top: 15px;
+}
+
+.rating-bar {
+  display: flex;
+  align-items: center;
+  margin: 5px 0;
+}
+
+.rating-level {
+  display: flex;
+  align-items: center;
+  width: 50px;
+}
+
+.rating-level .star {
+  font-size: 14px;
+  margin: 0;
+  color: #ffd700;
+}
+
+.rating-progress {
+  flex-grow: 1;
+  height: 10px;
+  background-color: #eee;
+  border-radius: 5px;
+  overflow: hidden;
+  margin: 0 10px;
+}
+
+.rating-progress-value {
+  height: 100%;
+  background-color: #4a90e2;
+  border-radius: 5px;
+}
+
+.rating-count {
+  width: 40px;
+  text-align: right;
+  font-size: 12px;
+  color: #666;
+} 
