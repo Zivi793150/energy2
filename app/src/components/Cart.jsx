@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import './Cart.css';
 import Button from './Button';
 import { getCart, removeFromCart, updateCartItemQuantity } from '../utils/cartUtils';
@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import DeliveryPointMap from './DeliveryPointMap';
 import axios from 'axios';
 import { API_URL } from '../config';
+import { promoService } from '../api/services';
 
 const Cart = () => {
   const [cartItems, setCartItems] = useState([]);
@@ -16,6 +17,7 @@ const Cart = () => {
   const [deliveryMethod, setDeliveryMethod] = useState('pickup'); // pickup или courier
   const { refreshCart } = useCart();
   const { isAuthenticated, user } = useAuth();
+  const navigate = useNavigate();
   
   // Состояния для промокода
   const [promoCode, setPromoCode] = useState('');
@@ -24,6 +26,7 @@ const Cart = () => {
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoSuccess, setPromoSuccess] = useState(false);
   const [discount, setDiscount] = useState(0);
+  const [error, setError] = useState('');
 
   // Загружаем корзину из localStorage при монтировании
   useEffect(() => {
@@ -209,6 +212,42 @@ const Cart = () => {
     localStorage.removeItem('appliedPromo');
   };
 
+  const handlePromoSubmit = async (e) => {
+    e.preventDefault();
+    if (!promoCode) return;
+
+    try {
+      setLoading(true);
+      const result = await promoService.validatePromo(promoCode, calculateSubtotal());
+      if (result.valid) {
+        setDiscount(result.discount);
+        setError('');
+      } else {
+        setError(result.message);
+        setDiscount(0);
+      }
+    } catch (err) {
+      setError('Ошибка при проверке промокода');
+      setDiscount(0);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCheckout = () => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    // TODO: Реализовать оформление заказа
+    console.log('Оформление заказа:', {
+      items: cartItems,
+      subtotal: calculateSubtotal(),
+      discount,
+      total: calculateSubtotal() - discount
+    });
+  };
+
   if (loading) {
     return (
       <div className="cart-container">
@@ -367,37 +406,39 @@ const Cart = () => {
           <div className="promo-section">
             <h2 className="section-title">Промокод</h2>
             <div className="promo-form">
-              <input 
-                type="text" 
-                className={`promo-input ${promoSuccess ? 'success' : promoMessage?.type === 'error' ? 'error' : ''}`}
-                placeholder="Введите промокод" 
-                value={promoCode}
-                onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                disabled={promoLoading || promoSuccess}
-              />
-              {promoSuccess ? (
-                <button 
-                  className="remove-promo-btn"
-                  onClick={removePromoCode}
-                  disabled={promoLoading}
-                >
-                  Удалить
-                </button>
-              ) : (
-                <button 
-                  className="apply-promo-btn"
-                  onClick={() => applyPromoCode(promoCode)}
-                  disabled={promoLoading || !promoCode}
-                >
-                  {promoLoading ? 'Проверяем...' : 'Применить'}
-                </button>
+              <form onSubmit={handlePromoSubmit} className="promo-form">
+                <input 
+                  type="text" 
+                  className={`promo-input ${promoSuccess ? 'success' : error ? 'error' : ''}`}
+                  placeholder="Введите промокод" 
+                  value={promoCode}
+                  onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                  disabled={promoLoading || promoSuccess}
+                />
+                {promoSuccess ? (
+                  <button 
+                    className="remove-promo-btn"
+                    onClick={removePromoCode}
+                    disabled={promoLoading}
+                  >
+                    Удалить
+                  </button>
+                ) : (
+                  <button 
+                    className="apply-promo-btn"
+                    type="submit"
+                    disabled={promoLoading || !promoCode}
+                  >
+                    {promoLoading ? 'Проверяем...' : 'Применить'}
+                  </button>
+                )}
+              </form>
+              {error && (
+                <div className="promo-message error">
+                  {error}
+                </div>
               )}
             </div>
-            {promoMessage && (
-              <div className={`promo-message ${promoMessage.type}`}>
-                {promoMessage.text}
-              </div>
-            )}
           </div>
           
           <div className="cart-summary">
@@ -435,8 +476,9 @@ const Cart = () => {
               <button 
                 className="checkout-btn" 
                 disabled={deliveryMethod === 'pickup' && !selectedDeliveryPoint}
+                onClick={handleCheckout}
               >
-                Перейти к оплате
+                Оформить заказ
               </button>
             </div>
           </div>
