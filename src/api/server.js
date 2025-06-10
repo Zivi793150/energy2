@@ -7,6 +7,11 @@ import { dirname, join } from 'path';
 import authRoutes from '../routes/authRoutes.js';
 import adminRoutes from '../routes/adminRoutes.js';
 import promoRoutes from '../routes/promoRoutes.js';
+import jwt from 'jsonwebtoken';
+import User from '../models/User.js';
+import Rating from '../models/Rating.js';
+import Product from '../models/Product.js';
+import Promo from '../models/Promo.js';
 
 // Получаем путь к текущему файлу и директории
 const __filename = fileURLToPath(import.meta.url);
@@ -82,7 +87,7 @@ async function connectToMongoDB() {
             retryReads: true, // Повторные попытки чтения
             heartbeatFrequencyMS: 10000 // Отправка heartbeat каждые 10 секунд
         });
-        return connection;
+  return connection;
     } catch (error) {
         console.error('MongoDB connection error:', error);
         return null;
@@ -154,6 +159,7 @@ app.use((err, req, res, next) => {
 
 // Подключаем маршруты аутентификации
 app.use('/api/auth', authRoutes);
+app.use('/api/products', authRoutes);
 
 // Подключаем маршруты администратора
 app.use('/api/admin', adminRoutes);
@@ -228,12 +234,6 @@ app.get('/api/products/top-rated', async (req, res) => {
     }
 });
 
-// Импортируем модели для использования в обработчиках API
-import User from '../models/User.js';
-import Rating from '../models/Rating.js';
-import Product from '../models/Product.js';
-import Promo from './models/Promo.js';
-
 app.get('/api/products', async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 0;
@@ -291,7 +291,12 @@ app.get('/api/products/:id', async (req, res) => {
                     ratingCount: 1,
                     flavor: 1,
                     firm: 1,
-                    description: 1
+                    description: 1,
+                    category: 1, 
+                    stock: 1, 
+                    isActive: 1, 
+                    features: 1, 
+                    specifications: 1 
                 }
             }
         );
@@ -300,16 +305,40 @@ app.get('/api/products/:id', async (req, res) => {
             return res.status(404).json({ message: 'Продукт не найден' });
         }
 
-        // Преобразуем путь к изображению в полный URL
-        const productWithFullImageUrl = {
+        // Получаем средний рейтинг и распределение оценок из модели Rating
+        const ratingStats = await Rating.getAverageRating(id);
+        const ratingDistribution = await Rating.getRatingDistribution(id);
+
+        // Получаем оценку текущего пользователя, если он авторизован
+        let userRating = null;
+        if (req.headers.authorization) {
+            const token = req.headers.authorization.split(' ')[1];
+            try {
+                const decoded = jwt.verify(token, process.env.JWT_SECRET);
+                const currentUserId = decoded.id; 
+                const existingUserRating = await Rating.findOne({ product: id, user: currentUserId });
+                if (existingUserRating) {
+                    userRating = existingUserRating.rating;
+                }
+            } catch (jwtError) {
+                console.warn('Недействительный токен при получении userRating:', jwtError.message);
+            }
+        }
+
+        // Преобразуем путь к изображению в полный URL и добавляем данные о рейтинге
+        const productWithFullImageUrlAndRatings = {
             ...product,
             image: product.image && typeof product.image === 'string' 
                    ? encodeURIComponent(product.image.split('\\').pop()) 
                    : null,
-            flavor: product.flavor
+            flavor: product.flavor,
+            averageRating: ratingStats.avgRating,
+            ratingCount: ratingStats.count,
+            ratingDistribution: ratingDistribution,
+            userRating: userRating
         };
 
-        res.json(productWithFullImageUrl);
+        res.json(productWithFullImageUrlAndRatings);
     } catch (err) {
         console.error('Ошибка при получении продукта:', err);
         res.status(500).json({ message: 'Ошибка сервера', error: err.message });
@@ -320,26 +349,26 @@ app.get('/api/products/:id', async (req, res) => {
 function determineProductFlavor(product) {
     // Список ключевых слов для каждого типа вкуса
     const flavorKeywords = {
-        classic: ['классический', 'classic', 'original', 'оригинальный', 'стандартный'],
-        tropic: [
+        'classic': ['классический', 'classic', 'original', 'оригинальный', 'стандартный'],
+        'tropic': [
             'тропический', 'tropic', 'tropical', 'манго', 'mango', 'ананас', 'pineapple', 
             'кокос', 'coconut', 'банан', 'banana', 'папайя', 'papaya', 'маракуйя', 'passion fruit'
         ],
-        berry: [
+        'berry': [
             'ягодный', 'ягода', 'berry', 'berries', 'малина', 'raspberry', 'клубника', 'strawberry',
             'черника', 'blueberry', 'ежевика', 'blackberry', 'смородина', 'currant', 'вишня', 'cherry'
         ],
-        citrus: [
+        'citrus': [
             'цитрус', 'цитрусовый', 'citrus', 'лимон', 'lemon', 'lime', 'лайм', 'апельсин', 'orange',
             'грейпфрут', 'grapefruit', 'мандарин', 'mandarin', 'tangerine'
         ],
-        cola: ['кола', 'cola'],
-        original: ['оригинальный', 'original', 'classic', 'классический'],
-        mixed: ['микс', 'mix', 'mixed', 'смешанный', 'ассорти', 'assorted'],
-        exotic: ['экзотический', 'exotic', 'необычный', 'unusual'],
-        mint: ['мята', 'mint', 'ментол', 'menthol', 'мятный', 'minty'],
-        cherry: ['вишня', 'cherry', 'cherries', 'вишни'],
-        chocolate: ['шоколад', 'chocolate', 'какао', 'cocoa', 'шоколадный'],
+        'cola': ['кола', 'cola'],
+        'original': ['оригинальный', 'original', 'classic', 'классический'],
+        'mixed': ['микс', 'mix', 'mixed', 'смешанный', 'ассорти', 'assorted'],
+        'exotic': ['экзотический', 'exotic', 'необычный', 'unusual'],
+        'mint': ['мята', 'mint', 'ментол', 'menthol', 'мятный', 'minty'],
+        'cherry': ['вишня', 'cherry', 'cherries', 'вишни'],
+        'chocolate': ['шоколад', 'chocolate', 'какао', 'cocoa', 'шоколадный'],
     };
 
     const textToSearch = `${product.name || ''} ${product.description || ''}`.toLowerCase();
@@ -461,94 +490,22 @@ app.get('/api/products/:id/ratings', async (req, res) => {
     }
 });
 
-// Добавление/обновление рейтинга продукта
-app.post('/api/products/:id/rate', protect, async (req, res) => {
+// Получение рейтинга продукта текущим пользователем
+app.get('/api/products/:productId/my-rating', protect, async (req, res) => {
     try {
-        const { id } = req.params;
-        const { rating } = req.body;
-        const userId = req.user._id;
-        
-        if (!rating || rating < 1 || rating > 5) {
-            return res.status(400).json({ message: 'Рейтинг должен быть от 1 до 5' });
-        }
-        
-        // Проверяем, существует ли продукт
-        const product = await Product.findById(id);
-        if (!product) {
-            return res.status(404).json({ message: 'Продукт не найден' });
-        }
-        
-        try {
-            // Проверяем, оценивал ли пользователь этот продукт ранее
-            let ratingRecord = await Rating.findOne({ product: id, user: userId });
-            
-            if (ratingRecord) {
-                // Обновляем существующую оценку
-                ratingRecord.rating = rating;
-                ratingRecord.updatedAt = new Date();
-                await ratingRecord.save();
-            } else {
-                // Создаем новую оценку
-                ratingRecord = new Rating({
-                    product: id,
-                    user: userId,
-                    rating
-                });
-                await ratingRecord.save();
-                
-                // Также добавляем рейтинг в профиль пользователя
-                try {
-                    await req.user.rateProduct(id, rating);
-                } catch (userError) {
-                    console.error('Ошибка при обновлении рейтинга в профиле пользователя:', userError);
-                    // Не прерываем выполнение, если не удалось обновить профиль пользователя
-                }
-            }
-            
-            // Обновляем статистику рейтинга продукта в отдельном try-catch блоке
-            try {
-                await product.updateRatingStats();
-            } catch (statsError) {
-                console.error('Ошибка при обновлении статистики рейтинга продукта:', statsError);
-                // Не прерываем выполнение, возвращаем успех с предупреждением
-                return res.json({
-                    message: 'Рейтинг сохранен, но статистика не обновлена',
-                    productId: id,
-                    rating,
-                    warning: 'Статистика продукта не обновлена'
-                });
-            }
-            
-            res.json({
-                message: 'Рейтинг успешно сохранен',
-                productId: id,
-                rating
-            });
-        } catch (saveError) {
-            console.error('Ошибка при сохранении рейтинга:', saveError);
-            res.status(500).json({ message: 'Ошибка при сохранении рейтинга', error: saveError.message });
-        }
-    } catch (err) {
-        console.error('Ошибка при добавлении/обновлении рейтинга:', err);
-        res.status(500).json({ message: 'Ошибка при добавлении/обновлении рейтинга', error: err.message });
-    }
-});
+        const { productId } = req.params;
+        const userId = req.user._id; // Получаем ID пользователя из req.user (из middleware protect)
 
-// Получение рейтинга пользователя для продукта
-app.get('/api/products/:id/my-rating', protect, async (req, res) => {
-    try {
-        const { id } = req.params;
-        const userId = req.user._id;
-        
-        const ratingRecord = await Rating.findOne({ product: id, user: userId });
-        
-        res.json({
-            productId: id,
-            rating: ratingRecord ? ratingRecord.rating : 0
-        });
-    } catch (err) {
-        console.error('Ошибка при получении рейтинга пользователя:', err);
-        res.status(500).json({ message: 'Ошибка сервера', error: err.message });
+        const userRating = await Rating.findOne({ product: productId, user: userId });
+
+        if (userRating) {
+            res.json({ rating: userRating.rating });
+        } else {
+            res.json({ rating: 0 });
+        }
+    } catch (error) {
+        console.error(`Ошибка при получении оценки пользователя для продукта ${req.params.productId}:`, error);
+        res.status(500).json({ message: 'Ошибка сервера при получении оценки пользователя', error: error.message });
     }
 });
 
@@ -565,16 +522,17 @@ app.get('/api/products/count', async (req, res) => {
 
 // Запуск сервера
 const startServer = async () => {
-    const connected = await connectWithRetry();
-    if (connected) {
-        app.listen(port, () => {
-        });
-    } else {
-        console.error('Не удалось подключиться к MongoDB, сервер не запущен.');
+    console.log('Запуск сервера...');
+    const isConnected = await connectWithRetry();
+
+    if (!isConnected) {
+        console.error('Не удалось подключиться к базе данных. Сервер не будет запущен.');
+        return;
     }
+
+    app.listen(port, () => {
+        console.log(`Сервер запущен на порту ${port}`);
+    });
 };
 
-startServer().catch(err => {
-    console.error('Ошибка при запуске сервера:', err);
-    process.exit(1);
-});
+startServer();

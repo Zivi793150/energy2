@@ -3,6 +3,7 @@ import authController from '../controllers/authController.js';
 import { protect } from '../middleware/auth.js';
 import User from '../models/User.js';
 import Product from '../models/Product.js';
+import Rating from '../models/Rating.js';
 
 const router = express.Router();
 
@@ -180,6 +181,63 @@ router.delete('/favorites/:productId', protect, async (req, res) => {
     res.status(500).json({ message: 'Ошибка сервера при удалении из избранного', error: error.message });
   }
 });
+
+// Добавление или обновление рейтинга продукта
+router.post('/:productId/rate', protect, asyncHandler(async (req, res) => {
+  const { productId } = req.params;
+  const { rating } = req.body;
+  const userId = req.user._id; // ID пользователя из токена
+
+  if (!rating || rating < 1 || rating > 5) {
+    return res.status(400).json({ message: 'Оценка должна быть числом от 1 до 5.' });
+  }
+
+  try {
+    // Проверяем, существует ли продукт
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ message: 'Продукт не найден.' });
+    }
+
+    // Ищем существующую оценку от этого пользователя для этого продукта
+    let userRating = await Rating.findOne({ product: productId, user: userId });
+
+    if (userRating) {
+      // Если оценка уже существует, обновляем ее
+      userRating.rating = rating;
+      userRating.updatedAt = new Date(); // Обновляем поле updatedAt
+      await userRating.save();
+      console.log(`Рейтинг продукта ${productId} обновлен пользователем ${userId} на ${rating}`);
+    } else {
+      // Если оценки нет, создаем новую
+      userRating = new Rating({
+        product: productId,
+        user: userId,
+        rating: rating
+      });
+      await userRating.save();
+      console.log(`Новая оценка ${rating} для продукта ${productId} добавлена пользователем ${userId}`);
+    }
+
+    // Пересчитываем средний рейтинг и количество оценок для продукта
+    const { avgRating, count } = await Rating.getAverageRating(productId);
+
+    product.ratingAvg = avgRating;
+    product.ratingCount = count;
+    await product.save();
+
+    res.json({ 
+      message: 'Оценка успешно добавлена/обновлена',
+      newAverageRating: product.ratingAvg,
+      newRatingCount: product.ratingCount,
+      userRating: userRating.rating
+    });
+
+  } catch (error) {
+    console.error(`Ошибка при добавлении/обновлении оценки для продукта ${productId}:`, error);
+    res.status(500).json({ message: 'Ошибка сервера при обработке оценки', error: error.message });
+  }
+}));
 
 // Обработчик ошибок
 router.use((err, req, res, next) => {
