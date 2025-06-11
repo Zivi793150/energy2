@@ -28,11 +28,33 @@ const PromoManagement = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      if (response.data.success) {
-        setPromos(response.data.promos);
-      } else {
-        setError(response.data.message || 'Не удалось загрузить промокоды');
+      // Проверяем, что response.data существует и является массивом
+      if (!response.data || !Array.isArray(response.data)) {
+        console.error('Неверный формат данных:', response.data);
+        setError('Неверный формат данных от сервера');
+        return;
       }
+      
+      // Преобразуем данные в нужный формат
+      const formattedPromos = response.data.map(promo => {
+        const now = new Date();
+        const endDate = new Date(promo.endDate);
+        const startDate = new Date(promo.startDate);
+        
+        return {
+          ...promo,
+          isValid: promo.isActive && 
+                  now >= startDate && 
+                  now <= endDate && 
+                  (!promo.usageLimit || (promo.usedCount || 0) < promo.usageLimit),
+          validUntil: endDate,
+          usageCount: promo.usedCount || 0,
+          type: promo.discountType
+        };
+      });
+      
+      console.log('Полученные промокоды:', formattedPromos);
+      setPromos(formattedPromos);
     } catch (err) {
       console.error('Ошибка при загрузке промокодов:', err);
       setError(err.response?.data?.message || 'Ошибка при загрузке промокодов');
@@ -48,16 +70,12 @@ const PromoManagement = () => {
     
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.delete(`${API_URL}/promos/${id}`, {
+      await axios.delete(`${API_URL}/promos/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      if (response.data.success) {
-        // Обновляем список промокодов после удаления
-        setPromos(promos.filter(promo => promo._id !== id));
-      } else {
-        setError(response.data.message || 'Не удалось удалить промокод');
-      }
+      // Обновляем список промокодов после удаления
+      setPromos(promos.filter(promo => promo._id !== id));
     } catch (err) {
       console.error('Ошибка при удалении промокода:', err);
       setError(err.response?.data?.message || 'Ошибка при удалении промокода');
@@ -72,14 +90,10 @@ const PromoManagement = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
-      if (response.data.success) {
-        // Обновляем статус в локальном состоянии
-        setPromos(promos.map(promo => 
-          promo._id === id ? { ...promo, isActive: !currentStatus } : promo
-        ));
-      } else {
-        setError(response.data.message || 'Не удалось изменить статус промокода');
-      }
+      // Обновляем статус в локальном состоянии
+      setPromos(promos.map(promo => 
+        promo._id === id ? { ...promo, isActive: !currentStatus } : promo
+      ));
     } catch (err) {
       console.error('Ошибка при изменении статуса промокода:', err);
       setError(err.response?.data?.message || 'Ошибка при изменении статуса промокода');

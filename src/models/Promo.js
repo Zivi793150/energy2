@@ -14,7 +14,7 @@ const promoSchema = new mongoose.Schema({
   },
   discountType: {
     type: String,
-    enum: ['percentage', 'fixed'],
+    enum: ['PERCENTAGE', 'FIXED', 'CASHBACK', 'FREE_ITEM', 'BUY_ONE_GET_ONE', 'FREE_DELIVERY'],
     required: [true, 'Тип скидки обязателен']
   },
   discountValue: {
@@ -56,7 +56,12 @@ const promoSchema = new mongoose.Schema({
   excludedProducts: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Product'
-  }]
+  }],
+  freeItem: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Product',
+    default: null
+  }
 }, {
   timestamps: true
 });
@@ -79,10 +84,12 @@ promoSchema.methods.calculateDiscount = function(purchaseAmount) {
   }
 
   let discount = 0;
-  if (this.discountType === 'percentage') {
+  if (this.discountType === 'PERCENTAGE' || this.discountType === 'CASHBACK') {
     discount = (purchaseAmount * this.discountValue) / 100;
-  } else {
+  } else if (this.discountType === 'FIXED') {
     discount = this.discountValue;
+  } else if (this.discountType === 'FREE_DELIVERY') {
+    discount = 300; // Стоимость доставки
   }
 
   if (this.maxDiscountAmount !== null) {

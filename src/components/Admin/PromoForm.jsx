@@ -13,12 +13,12 @@ const PromoForm = () => {
   const [formData, setFormData] = useState({
     code: '',
     description: '',
-    type: 'PERCENTAGE',
-    value: '',
-    minPurchase: 0,
-    maxDiscount: '',
-    validFrom: '',
-    validUntil: '',
+    discountType: 'PERCENTAGE',
+    discountValue: '',
+    minPurchaseAmount: 0,
+    maxDiscountAmount: '',
+    startDate: '',
+    endDate: '',
     usageLimit: '',
     isActive: true,
     applicableProducts: [],
@@ -51,8 +51,8 @@ const PromoForm = () => {
     // Устанавливаем дату начала действия промокода (сегодня)
     setFormData(prev => ({
       ...prev,
-      validFrom: today,
-      validUntil: '' // Оставляем пустым для ввода пользователем
+      startDate: today,
+      endDate: '' // Оставляем пустым для ввода пользователем
     }));
 
     // Загрузка списка продуктов
@@ -103,12 +103,12 @@ const PromoForm = () => {
             const updatedFormData = {
               code: promo.code || '',
               description: promo.description || '',
-              type: promo.type || 'PERCENTAGE',
-              value: promo.value !== undefined ? promo.value : '',
-              minPurchase: promo.minPurchase !== undefined ? promo.minPurchase : 0,
-              maxDiscount: promo.maxDiscount || '',
-              validFrom: formatDate(promo.validFrom),
-              validUntil: formatDate(promo.validUntil),
+              discountType: promo.type || 'PERCENTAGE',
+              discountValue: promo.value !== undefined ? promo.value : '',
+              minPurchaseAmount: promo.minPurchase !== undefined ? promo.minPurchase : 0,
+              maxDiscountAmount: promo.maxDiscount || '',
+              startDate: formatDate(promo.validFrom),
+              endDate: formatDate(promo.validUntil),
               usageLimit: promo.usageLimit || '',
               isActive: promo.isActive !== undefined ? promo.isActive : true,
               applicableProducts: promo.applicableProducts || [],
@@ -215,16 +215,27 @@ const PromoForm = () => {
     
     try {
       const token = localStorage.getItem('token');
-      const headers = { Authorization: `Bearer ${token}` };
+      const headers = { 
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
       
       // Формируем данные для отправки
       const promoData = {
-        ...formData
+        code: formData.code.toUpperCase(),
+        description: formData.description,
+        discountType: formData.discountType,
+        discountValue: Number(formData.discountValue),
+        startDate: new Date(formData.startDate).toISOString(),
+        endDate: new Date(formData.endDate).toISOString(),
+        isActive: Boolean(formData.isActive),
+        minPurchaseAmount: Number(formData.minPurchaseAmount) || 0,
+        maxDiscountAmount: formData.maxDiscountAmount ? Number(formData.maxDiscountAmount) : null,
+        usageLimit: formData.usageLimit ? Number(formData.usageLimit) : null,
+        applicableCategories: formData.applicableCategories || [],
+        excludedProducts: formData.excludedProducts || [],
+        freeItem: formData.freeItem || null
       };
-      
-      // Преобразуем пустые строки в null или значения по умолчанию
-      if (promoData.maxDiscount === '') promoData.maxDiscount = null;
-      if (promoData.usageLimit === '') promoData.usageLimit = null;
       
       let response;
       if (isEditMode) {
@@ -233,7 +244,7 @@ const PromoForm = () => {
         response = await axios.post(`${API_URL}/promos`, promoData, { headers });
       }
       
-      if (response.data.success) {
+      if (response.data) {
         setSuccess(`Промокод успешно ${isEditMode ? 'обновлен' : 'создан'}`);
         
         // Редирект на страницу списка промокодов после небольшой задержки
@@ -241,7 +252,7 @@ const PromoForm = () => {
           navigate('/admin/promos');
         }, 1500);
       } else {
-        setError(response.data.message || `Не удалось ${isEditMode ? 'обновить' : 'создать'} промокод`);
+        setError(response.data?.message || `Не удалось ${isEditMode ? 'обновить' : 'создать'} промокод`);
       }
     } catch (err) {
       console.error('Ошибка при сохранении промокода:', err);
@@ -252,13 +263,13 @@ const PromoForm = () => {
   };
 
   // Проверка, нужно ли отображать поле значения скидки
-  const showValueField = ['PERCENTAGE', 'FIXED', 'CASHBACK'].includes(formData.type);
+  const showValueField = ['PERCENTAGE', 'FIXED', 'CASHBACK'].includes(formData.discountType);
   
   // Проверка, нужно ли отображать поле максимальной скидки
-  const showMaxDiscountField = formData.type === 'PERCENTAGE';
+  const showMaxDiscountField = formData.discountType === 'PERCENTAGE';
   
   // Проверка, нужно ли отображать поле выбора товара для подарка
-  const showFreeItemField = formData.type === 'FREE_ITEM';
+  const showFreeItemField = formData.discountType === 'FREE_ITEM';
   
   // Фильтрация товаров по поиску
   const filteredProducts = products.filter(product => 
@@ -323,11 +334,11 @@ const PromoForm = () => {
         
         <div className="form-row">
           <div className="form-group">
-            <label htmlFor="type">Тип промокода*</label>
+            <label htmlFor="discountType">Тип промокода*</label>
             <select
-              id="type"
-              name="type"
-              value={formData.type}
+              id="discountType"
+              name="discountType"
+              value={formData.discountType}
               onChange={handleChange}
               className="form-control"
               disabled={submitting}
@@ -344,20 +355,20 @@ const PromoForm = () => {
           
           {showValueField && (
             <div className="form-group">
-              <label htmlFor="value">
-                {formData.type === 'PERCENTAGE' || formData.type === 'CASHBACK' ? 'Процент скидки (%)' : 'Сумма скидки (руб.)'}*
+              <label htmlFor="discountValue">
+                {formData.discountType === 'PERCENTAGE' || formData.discountType === 'CASHBACK' ? 'Процент скидки (%)' : 'Сумма скидки (руб.)'}*
               </label>
               <input
                 type="number"
-                id="value"
-                name="value"
-                value={formData.value}
+                id="discountValue"
+                name="discountValue"
+                value={formData.discountValue}
                 onChange={handleChange}
-                placeholder={formData.type === 'PERCENTAGE' || formData.type === 'CASHBACK' ? "Например, 10" : "Например, 500"}
+                placeholder={formData.discountType === 'PERCENTAGE' || formData.discountType === 'CASHBACK' ? "Например, 10" : "Например, 500"}
                 required
                 className="form-control"
                 min="0"
-                max={formData.type === 'PERCENTAGE' || formData.type === 'CASHBACK' ? "100" : ""}
+                max={formData.discountType === 'PERCENTAGE' || formData.discountType === 'CASHBACK' ? "100" : ""}
                 disabled={submitting}
               />
             </div>
@@ -374,7 +385,7 @@ const PromoForm = () => {
               onChange={handleChange}
               className="form-control"
               disabled={submitting}
-              required={formData.type === 'FREE_ITEM'}
+              required={formData.discountType === 'FREE_ITEM'}
             >
               <option value="">Выберите товар</option>
               {products.map(product => (
@@ -388,12 +399,12 @@ const PromoForm = () => {
         
         <div className="form-row">
           <div className="form-group">
-            <label htmlFor="minPurchase">Минимальная сумма заказа (руб.)</label>
+            <label htmlFor="minPurchaseAmount">Минимальная сумма заказа (руб.)</label>
             <input
               type="number"
-              id="minPurchase"
-              name="minPurchase"
-              value={formData.minPurchase}
+              id="minPurchaseAmount"
+              name="minPurchaseAmount"
+              value={formData.minPurchaseAmount}
               onChange={handleChange}
               placeholder="0"
               className="form-control"
@@ -404,12 +415,12 @@ const PromoForm = () => {
           
           {showMaxDiscountField && (
             <div className="form-group">
-              <label htmlFor="maxDiscount">Максимальная сумма скидки (руб.)</label>
+              <label htmlFor="maxDiscountAmount">Максимальная сумма скидки (руб.)</label>
               <input
                 type="number"
-                id="maxDiscount"
-                name="maxDiscount"
-                value={formData.maxDiscount}
+                id="maxDiscountAmount"
+                name="maxDiscountAmount"
+                value={formData.maxDiscountAmount}
                 onChange={handleChange}
                 placeholder="Без ограничений"
                 className="form-control"
@@ -423,12 +434,12 @@ const PromoForm = () => {
         
         <div className="form-row">
           <div className="form-group">
-            <label htmlFor="validFrom">Дата начала действия*</label>
+            <label htmlFor="startDate">Дата начала действия*</label>
             <input
               type="date"
-              id="validFrom"
-              name="validFrom"
-              value={formData.validFrom}
+              id="startDate"
+              name="startDate"
+              value={formData.startDate}
               onChange={handleChange}
               className="form-control"
               required
@@ -437,12 +448,12 @@ const PromoForm = () => {
           </div>
           
           <div className="form-group">
-            <label htmlFor="validUntil">Дата окончания действия*</label>
+            <label htmlFor="endDate">Дата окончания действия*</label>
             <input
               type="date"
-              id="validUntil"
-              name="validUntil"
-              value={formData.validUntil}
+              id="endDate"
+              name="endDate"
+              value={formData.endDate}
               onChange={handleChange}
               className="form-control"
               required

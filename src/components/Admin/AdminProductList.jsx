@@ -120,7 +120,7 @@ const AdminProductList = () => {
                                     )}
                                 </div>
                                 <div className="admin-product-rating minimal">
-                                    <span>★ {product.ratingAvg?.toFixed(1) || '0.0'}</span>
+                                    <span>★ {product.averageRating?.toFixed(1) || '0.0'}</span>
                                     <span className="admin-product-rating-count">({product.ratingCount || 0})</span>
                                 </div>
                             </div>

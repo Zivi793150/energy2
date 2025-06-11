@@ -221,11 +221,19 @@ const Main = () => {
                 const data = await response.json();
                 console.log(`Получено ${data.products?.length || 0} популярных товаров`);
                 
+                // Преобразуем пути к изображениям в полные URL
+                const productsWithFullImageUrls = data.products.map(product => ({
+                    ...product,
+                    image: product.image && typeof product.image === 'string' 
+                           ? `/images/${encodeURIComponent(product.image.split('\\').pop())}`
+                           : null
+                }));
+                
                 // Сохраняем в кэш
-                sessionStorage.setItem('topProducts', JSON.stringify(data.products));
+                sessionStorage.setItem('topProducts', JSON.stringify(productsWithFullImageUrls));
                 sessionStorage.setItem('topProductsTimestamp', now.toString());
                 
-                setProducts(data.products || []);
+                setProducts(productsWithFullImageUrls || []);
             } catch (err) {
                 console.error('Ошибка при загрузке товаров:', err);
                 setError(err.message);

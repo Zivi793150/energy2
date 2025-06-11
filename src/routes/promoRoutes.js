@@ -7,18 +7,19 @@ import {
   deletePromo,
   applyPromo
 } from '../controllers/promoController.js';
-import { protect as authenticateToken, isAdmin } from '../middleware/auth.js';
+import { protect, isAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Пользовательские маршруты
-router.post('/apply', applyPromo); // Позволяет применять промокоды без аутентификации
+// Публичные маршруты
+router.post('/apply', applyPromo);
 
-// Маршруты для администраторов
-router.get('/', authenticateToken, isAdmin, getAllPromos);
-router.get('/:id', authenticateToken, isAdmin, getPromoById);
-router.post('/', authenticateToken, isAdmin, createPromo);
-router.put('/:id', authenticateToken, isAdmin, updatePromo);
-router.delete('/:id', authenticateToken, isAdmin, deletePromo);
+// Защищенные маршруты (требуют авторизации и прав администратора)
+router.use(protect, isAdmin);
+router.get('/', getAllPromos);
+router.get('/:id', getPromoById);
+router.post('/', createPromo);
+router.put('/:id', updatePromo);
+router.delete('/:id', deletePromo);
 
 export default router; 

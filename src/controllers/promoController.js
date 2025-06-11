@@ -1,216 +1,173 @@
 import Promo from '../models/Promo.js';
 
-// Получение всех промокодов (для админа)
+// Получение всех промокодов
 export const getAllPromos = async (req, res) => {
   try {
-    const promos = await Promo.find().sort({ createdAt: -1 });
+    const promos = await Promo.find()
+      .sort({ createdAt: -1 })
+      .lean(); // Используем lean() для получения простых JavaScript объектов
     
-    // Дополнительно проверяем валидность для отображения в интерфейсе
-    const promosWithStatus = promos.map(promo => {
-      const promoObj = promo.toObject();
-      promoObj.isValid = promo.isValid();
-      return promoObj;
-    });
-    
-    return res.status(200).json({ success: true, promos: promosWithStatus });
+    // Преобразуем даты в строки ISO для корректной сериализации
+    const formattedPromos = promos.map(promo => ({
+      ...promo,
+      startDate: promo.startDate.toISOString(),
+      endDate: promo.endDate.toISOString(),
+      createdAt: promo.createdAt.toISOString(),
+      updatedAt: promo.updatedAt.toISOString()
+    }));
+
+    console.log('Отправляем промокоды:', formattedPromos);
+    res.json(formattedPromos);
   } catch (error) {
     console.error('Ошибка при получении промокодов:', error);
-    return res.status(500).json({ 
-      success: false, 
-      message: 'Ошибка при получении промокодов',
-      error: error.message
-    });
+    res.status(500).json({ message: 'Ошибка при получении промокодов' });
   }
 };
 
-// Получение промокода по ID (для админа)
+// Получение промокода по ID
 export const getPromoById = async (req, res) => {
   try {
     const { id } = req.params;
     const promo = await Promo.findById(id);
     
     if (!promo) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Промокод не найден' 
-      });
+      return res.status(404).json({ message: 'Промокод не найден' });
     }
     
-    const promoObj = promo.toObject();
-    promoObj.isValid = promo.isValid();
-    
-    return res.status(200).json({ success: true, promo: promoObj });
+    res.json(promo);
   } catch (error) {
     console.error('Ошибка при получении промокода:', error);
-    return res.status(500).json({ 
-      success: false, 
-      message: 'Ошибка при получении промокода',
-      error: error.message
-    });
+    res.status(500).json({ message: 'Ошибка при получении промокода' });
   }
 };
 
-// Создание нового промокода (для админа)
+// Создание нового промокода
 export const createPromo = async (req, res) => {
   try {
-    const { 
-      code, 
-      description, 
-      discountType, 
-      discountValue, 
-      minPurchaseAmount, 
-      maxDiscountAmount, 
-      startDate, 
-      endDate, 
-      usageLimit,
+    const {
+      code,
+      description,
+      discountType,
+      discountValue,
+      startDate,
+      endDate,
       isActive,
+      minPurchaseAmount,
+      maxDiscountAmount,
+      usageLimit,
       applicableCategories,
       excludedProducts,
-      image
+      freeItem
     } = req.body;
-    
-    // Проверка на уникальность кода
-    const existingPromo = await Promo.findOne({ code: code.toUpperCase() });
+
+    // Проверка на существующий код
+    const existingPromo = await Promo.findOne({ code });
     if (existingPromo) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Промокод с таким кодом уже существует' 
-      });
+      return res.status(400).json({ message: 'Промокод с таким кодом уже существует' });
     }
-    
-    // Создаем новый промокод
+
+    // Создание нового промокода
     const promo = new Promo({
       code: code.toUpperCase(),
       description,
       discountType,
-      discountValue,
-      minPurchaseAmount: minPurchaseAmount || 0,
-      maxDiscountAmount: maxDiscountAmount || null,
-      startDate: startDate || new Date(),
-      endDate,
-      usageLimit: usageLimit || null,
-      isActive: isActive !== undefined ? isActive : true,
+      discountValue: Number(discountValue),
+      startDate: new Date(startDate),
+      endDate: new Date(endDate),
+      isActive: Boolean(isActive),
+      minPurchaseAmount: Number(minPurchaseAmount) || 0,
+      maxDiscountAmount: maxDiscountAmount ? Number(maxDiscountAmount) : null,
+      usageLimit: usageLimit ? Number(usageLimit) : null,
       applicableCategories: applicableCategories || [],
       excludedProducts: excludedProducts || [],
-      image: image || null
+      freeItem: freeItem || null
     });
-    
+
     await promo.save();
-    
-    return res.status(201).json({ 
-      success: true, 
-      message: 'Промокод успешно создан', 
-      promo 
-    });
+    res.status(201).json(promo);
   } catch (error) {
     console.error('Ошибка при создании промокода:', error);
-    return res.status(500).json({ 
-      success: false, 
+    res.status(500).json({ 
       message: 'Ошибка при создании промокода',
-      error: error.message
+      error: error.message 
     });
   }
 };
 
-// Обновление промокода (для админа)
+// Обновление промокода
 export const updatePromo = async (req, res) => {
   try {
     const { id } = req.params;
-    const { 
-      code, 
-      description, 
-      discountType, 
-      discountValue, 
-      minPurchaseAmount, 
-      maxDiscountAmount, 
-      startDate, 
-      endDate, 
-      usageLimit,
+    const {
+      code,
+      description,
+      discountType,
+      discountValue,
+      startDate,
+      endDate,
       isActive,
+      minPurchaseAmount,
+      maxDiscountAmount,
+      usageLimit,
       applicableCategories,
       excludedProducts,
-      usedCount,
-      image
+      freeItem
     } = req.body;
-    
-    // Проверка существования промокода
+
+    // Проверка на существующий код (кроме текущего промокода)
+    if (code) {
+      const existingPromo = await Promo.findOne({ 
+        code: code.toUpperCase(),
+        _id: { $ne: id }
+      });
+      if (existingPromo) {
+        return res.status(400).json({ message: 'Промокод с таким кодом уже существует' });
+      }
+    }
+
     const promo = await Promo.findById(id);
     if (!promo) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Промокод не найден' 
-      });
+      return res.status(404).json({ message: 'Промокод не найден' });
     }
-    
-    // Если код меняется, проверяем уникальность
-    if (code && code.toUpperCase() !== promo.code) {
-      const existingPromo = await Promo.findOne({ code: code.toUpperCase() });
-      if (existingPromo) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'Промокод с таким кодом уже существует' 
-        });
-      }
-      promo.code = code.toUpperCase();
-    }
-    
-    // Обновляем поля промокода
+
+    // Обновление полей
+    if (code) promo.code = code.toUpperCase();
     if (description) promo.description = description;
     if (discountType) promo.discountType = discountType;
-    if (discountValue !== undefined) promo.discountValue = discountValue;
-    if (minPurchaseAmount !== undefined) promo.minPurchaseAmount = minPurchaseAmount;
-    if (maxDiscountAmount !== undefined) promo.maxDiscountAmount = maxDiscountAmount;
-    if (startDate) promo.startDate = startDate;
-    if (endDate) promo.endDate = endDate;
-    if (usageLimit !== undefined) promo.usageLimit = usageLimit;
-    if (isActive !== undefined) promo.isActive = isActive;
-    if (usedCount !== undefined) promo.usedCount = usedCount;
+    if (discountValue !== undefined) promo.discountValue = Number(discountValue);
+    if (startDate) promo.startDate = new Date(startDate);
+    if (endDate) promo.endDate = new Date(endDate);
+    if (isActive !== undefined) promo.isActive = Boolean(isActive);
+    if (minPurchaseAmount !== undefined) promo.minPurchaseAmount = Number(minPurchaseAmount);
+    if (maxDiscountAmount !== undefined) promo.maxDiscountAmount = maxDiscountAmount ? Number(maxDiscountAmount) : null;
+    if (usageLimit !== undefined) promo.usageLimit = usageLimit ? Number(usageLimit) : null;
     if (applicableCategories) promo.applicableCategories = applicableCategories;
     if (excludedProducts) promo.excludedProducts = excludedProducts;
-    if (image !== undefined) promo.image = image;
-    
+    if (freeItem !== undefined) promo.freeItem = freeItem;
+
     await promo.save();
-    
-    return res.status(200).json({ 
-      success: true, 
-      message: 'Промокод успешно обновлен', 
-      promo 
-    });
+    res.json(promo);
   } catch (error) {
     console.error('Ошибка при обновлении промокода:', error);
-    return res.status(500).json({ 
-      success: false, 
+    res.status(500).json({ 
       message: 'Ошибка при обновлении промокода',
-      error: error.message
+      error: error.message 
     });
   }
 };
 
-// Удаление промокода (для админа)
+// Удаление промокода
 export const deletePromo = async (req, res) => {
   try {
     const { id } = req.params;
-    
     const promo = await Promo.findByIdAndDelete(id);
-    
     if (!promo) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Промокод не найден' 
-      });
+      return res.status(404).json({ message: 'Промокод не найден' });
     }
-    
-    return res.status(200).json({ 
-      success: true, 
-      message: 'Промокод успешно удален' 
-    });
+    res.json({ message: 'Промокод успешно удален' });
   } catch (error) {
     console.error('Ошибка при удалении промокода:', error);
-    return res.status(500).json({ 
-      success: false, 
-      message: 'Ошибка при удалении промокода',
-      error: error.message
-    });
+    res.status(500).json({ message: 'Ошибка при удалении промокода' });
   }
 };
 
@@ -219,54 +176,93 @@ export const applyPromo = async (req, res) => {
   try {
     const { code, purchaseAmount } = req.body;
     
-    if (!code || !purchaseAmount) {
-      return res.status(400).json({
+    if (!code) {
+      return res.status(400).json({ 
         success: false,
-        message: 'Необходимо указать код промокода и сумму покупки'
+        message: 'Не указан код промокода' 
       });
     }
-    
+
+    if (!purchaseAmount || purchaseAmount <= 0) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Неверная сумма покупки' 
+      });
+    }
+
+    console.log('Попытка найти промокод с кодом:', code.toUpperCase());
+    console.log('Тип объекта Promo:', typeof Promo);
+    console.log('Объект Promo:', Promo);
+
     const promo = await Promo.findOne({ code: code.toUpperCase() });
     
     if (!promo) {
-      return res.status(404).json({
+      return res.status(404).json({ 
         success: false,
-        message: 'Промокод не найден'
+        message: 'Промокод не найден' 
       });
     }
-    
-    if (!promo.isValid()) {
-      return res.status(400).json({
+
+    // Проверяем валидность промокода
+    const now = new Date();
+    if (!promo.isActive || 
+        now < promo.startDate || 
+        now > promo.endDate || 
+        (promo.usageLimit && promo.usedCount >= promo.usageLimit)) {
+      return res.status(400).json({ 
         success: false,
-        message: 'Промокод недействителен'
+        message: 'Промокод недействителен' 
       });
     }
-    
+
+    // Проверяем минимальную сумму покупки
+    if (purchaseAmount < promo.minPurchaseAmount) {
+      return res.status(400).json({ 
+        success: false,
+        message: `Минимальная сумма покупки для применения промокода: ${promo.minPurchaseAmount} руб.` 
+      });
+    }
+
+    // Рассчитываем скидку
     const discount = promo.calculateDiscount(purchaseAmount);
     
-    if (discount === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Промокод не может быть применен к данной сумме'
-      });
-    }
-    
-    // Увеличиваем счетчик использования
-    promo.usedCount += 1;
-    await promo.save();
-    
-    return res.status(200).json({
+    // Формируем ответ
+    const response = {
       success: true,
       message: 'Промокод успешно применен',
+      promoDetails: {
+        code: promo.code,
+        description: promo.description,
+        discountType: promo.discountType,
+        discountValue: promo.discountValue
+      },
+      discount: discount
+    };
+
+    // Если это промокод на бесплатную доставку
+    if (promo.discountType === 'FREE_DELIVERY') {
+      response.deliveryPrice = 0;
+    }
+
+    // Если это промокод на бесплатный товар
+    if (promo.discountType === 'FREE_ITEM' && promo.freeItem) {
+      response.freeItem = promo.freeItem;
+    }
+
+    console.log('Применение промокода:', {
+      code: promo.code,
+      purchaseAmount,
       discount,
-      finalAmount: purchaseAmount - discount
+      response
     });
+
+    res.json(response);
   } catch (error) {
     console.error('Ошибка при применении промокода:', error);
-    return res.status(500).json({
+    res.status(500).json({ 
       success: false,
       message: 'Ошибка при применении промокода',
-      error: error.message
+      error: error.message 
     });
   }
 };

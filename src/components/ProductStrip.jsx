@@ -7,7 +7,7 @@ const ProductCard = React.memo(({ product, isCenter }) => (
   <div className={`product-card ${isCenter ? 'center' : ''}`} style={{ zIndex: isCenter ? 2 : 1 }}>
     <Link to={`/product/${product._id || product.id}`} className="product-link">
       <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <img src={product.images} alt={product.name} loading="lazy" />
+        <img src={product.image} alt={product.name} loading="lazy" />
       </div>
     </Link>
   </div>

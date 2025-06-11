@@ -72,8 +72,10 @@ export function getFavorites() {
     const key = getFavoritesKey();
     const favorites = localStorage.getItem(key);
     if (!favorites) {
-      console.log('Избранные товары не найдены в localStorage');
-      return [];
+      console.log('Избранные товары не найдены в localStorage, инициализируем пустой массив');
+      const emptyFavorites = [];
+      localStorage.setItem(key, JSON.stringify(emptyFavorites));
+      return emptyFavorites;
     }
     const parsedFavorites = JSON.parse(favorites);
     console.log('Получены избранные товары:', parsedFavorites);

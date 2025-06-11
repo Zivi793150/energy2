@@ -13,6 +13,7 @@ import { findSimilarProducts } from '../utils/productUtils';
 import { useCart } from '../context/CartContext';
 import { useFavorites } from '../context/FavoritesContext';
 import { useAuth } from '../context/AuthContext';
+import axios from 'axios';
 
 // Функция для преобразования значения вкуса в читаемый текст
 function getFlavorDisplayName(flavor) {
@@ -65,7 +66,7 @@ const ProductPage = () => {
         if (cachedProduct && cacheTimestamp && (now - parseInt(cacheTimestamp)) < 300000) {
           console.log('Используем кэшированные данные продукта');
           const productData = JSON.parse(cachedProduct);
-          console.log('Кэшированные данные продукта:', { id: productData._id, name: productData.name, flavor: productData.flavor });
+          console.log('Кэшированные данные продукта:', { id: productData._id, name: productData.name, flavor: productData.flavor, averageRating: productData.averageRating, ratingCount: productData.ratingCount });
           setProduct(productData);
           
           // Загружаем похожие продукты
@@ -103,7 +104,7 @@ const ProductPage = () => {
           
           if (foundProduct) {
             console.log('Продукт найден в общем списке:', foundProduct);
-            console.log('Данные продукта:', { id: foundProduct._id, name: foundProduct.name, flavor: foundProduct.flavor });
+            console.log('Данные продукта:', { id: foundProduct._id, name: foundProduct.name, flavor: foundProduct.flavor, averageRating: foundProduct.ratingAvg, ratingCount: foundProduct.ratingCount });
             currentProduct = foundProduct;
             setProduct(foundProduct);
           } else {
@@ -113,14 +114,14 @@ const ProductPage = () => {
         } else {
           const data = await response.json();
           console.log('Продукт получен напрямую из API:', data);
-          console.log('Данные продукта:', { id: data._id, name: data.name, flavor: data.flavor });
+          console.log('Данные продукта:', { id: data._id, name: data.name, flavor: data.flavor, averageRating: data.averageRating, ratingCount: data.ratingCount });
           currentProduct = data;
           setProduct(data);
         }
         
-        // Кэшируем продукт
-        sessionStorage.setItem(`product_${id}`, JSON.stringify(currentProduct));
-        sessionStorage.setItem(`product_${id}_timestamp`, now.toString());
+        // Кэшируем продукт (Временно убираем для отладки)
+        // sessionStorage.setItem(`product_${id}`, JSON.stringify(currentProduct));
+        // sessionStorage.setItem(`product_${id}_timestamp`, now.toString());
         
         // Находим похожие продукты
         const similar = findSimilarProducts(currentProduct, allProductsData.products || [], 6);
@@ -177,25 +178,45 @@ const ProductPage = () => {
   // Функция для обновления рейтинга продукта
   const handleRatingChange = async (newRating) => {
     console.log(`Продукт оценен на ${newRating} звезд`);
-    
+
     // Обновляем локальное состояние продукта для немедленной обратной связи
     setProduct(prevProduct => ({
       ...prevProduct,
-      userRating: newRating
+      userRating: newRating // Обновляем userRating локально
     }));
-    
-    // Запрашиваем обновленные данные о продукте после изменения рейтинга
+
     try {
-      setTimeout(async () => {
-        const response = await fetch(`http://localhost:5000/api/products/${id}`);
-        if (response.ok) {
-          const updatedProduct = await response.json();
-          console.log('Получены обновленные данные о продукте:', updatedProduct);
-          setProduct(updatedProduct);
+      // Отправляем оценку на сервер
+      const token = localStorage.getItem('token');
+      const response = await axios.post(
+        `http://localhost:5000/api/products/${id}/rate`,
+        { rating: newRating },
+        {
+          headers: { Authorization: `Bearer ${token}` }
         }
-      }, 500); // Небольшая задержка для завершения обновления на сервере
+      );
+
+      if (response.status === 200) {
+        console.log('Оценка успешно отправлена:', response.data);
+        // Обновляем состояние продукта с данными, полученными с сервера
+        setProduct(prevProduct => ({
+          ...prevProduct,
+          averageRating: response.data.newAverageRating,
+          ratingCount: response.data.newRatingCount,
+          userRating: response.data.userRating // Убедимся, что userRating обновлен
+        }));
+        // Принудительно очищаем кэш продукта, чтобы при следующем рендере он запросил свежие данные
+        sessionStorage.removeItem(`product_${id}`); 
+      } else {
+        console.error('Ошибка при отправке оценки:', response.data);
+      }
     } catch (error) {
-      console.error('Ошибка при обновлении информации о продукте:', error);
+      console.error('Ошибка при отправке оценки продукта:', error);
+      // Откатываем локальное состояние, если ошибка
+      setProduct(prevProduct => ({
+        ...prevProduct,
+        userRating: product.userRating // Возвращаем предыдущую оценку пользователя
+      }));
     }
   };
 
@@ -281,10 +302,10 @@ const ProductPage = () => {
           {/* Рейтинг */}
           <div className="product-rating-container">
             <div className="rating-summary">
-              <span className="rating-value">{product.ratingAvg ? product.ratingAvg.toFixed(1) : '0.0'}</span>
+              <span className="rating-value">{product.averageRating ? product.averageRating.toFixed(1) : '0.0'}</span>
               <StarRating
                 productId={product._id || product.id}
-                initialRating={product.ratingAvg || 0}
+                initialRating={product.averageRating || 0}
                 readOnly={true}
                 size="medium"
               />

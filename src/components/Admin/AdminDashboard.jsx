@@ -39,7 +39,7 @@ const TopProductItem = ({ product, index }) => (
     </div>
     <div className="top-product-rating">
       <span>★</span>
-      <span>{product.ratingAvg ? product.ratingAvg.toFixed(1) : '0.0'}</span>
+      <span>{product.averageRating ? product.averageRating.toFixed(1) : '0.0'}</span>
       <small>({product.ratingCount || 0})</small>
     </div>
   </motion.div>

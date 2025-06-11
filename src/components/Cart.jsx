@@ -152,30 +152,40 @@ const Cart = () => {
     setPromoMessage(null);
     
     try {
+      const subtotal = calculateSubtotal();
       const response = await axios.post(`${API_URL}/promos/apply`, {
-        code,
-        cart: cartItems,
-        deliveryPrice: calculateDeliveryPrice()
+        code: code.trim().toUpperCase(),
+        purchaseAmount: subtotal
       });
       
       if (response.data.success) {
         setPromoSuccess(true);
         setAppliedPromo({
-          ...response.data,
-          code
+          ...response.data.promoDetails,
+          code: code.trim().toUpperCase(),
+          discount: response.data.discount
         });
         setDiscount(response.data.discount || 0);
         setPromoMessage({ type: 'success', text: response.data.message });
         
         // Сохраняем примененный промокод в localStorage
         localStorage.setItem('appliedPromo', JSON.stringify({
-          ...response.data,
-          code
+          ...response.data.promoDetails,
+          code: code.trim().toUpperCase(),
+          discount: response.data.discount
         }));
         
-        // Если промокод добавляет бесплатные товары, обновляем корзину
-        if (response.data.cart && response.data.cart.length > cartItems.length) {
-          setCartItems(response.data.cart);
+        // Если промокод добавляет бесплатные товары
+        if (response.data.freeItem) {
+          // Добавляем бесплатный товар в корзину
+          const freeItem = response.data.freeItem;
+          const existingItem = cartItems.find(item => item._id === freeItem._id);
+          
+          if (!existingItem) {
+            const newCartItems = [...cartItems, { ...freeItem, quantity: 1, isFree: true }];
+            setCartItems(newCartItems);
+            localStorage.setItem('cart', JSON.stringify(newCartItems));
+          }
         }
       } else {
         setPromoSuccess(false);
