@@ -311,10 +311,10 @@ const AdminDashboard = () => {
           <StatCard 
             icon="🎁"
             title="Промокоды"
-            value="Управлять"
+            value={null}
             color="purple"
             linkTo="/admin/promos"
-            linkText="Управление промокодами"
+            linkText="Промокоды"
           />
         </div>
         
